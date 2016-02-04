@@ -121,6 +121,7 @@ const char ODBC_LOG_EVENT_TABLE[] = "OdbcLogEventTable";
 const char RESET_ON_LOGON[] = "ResetOnLogon";
 const char RESET_ON_LOGOUT[] = "ResetOnLogout";
 const char RESET_ON_DISCONNECT[] = "ResetOnDisconnect";
+const char RESET_ON_WRONG_TIME[] = "ResetOnWrongTime";
 const char REFRESH_ON_LOGON[] = "RefreshOnLogon";
 const char MILLISECONDS_IN_TIMESTAMP[] = "MillisecondsInTimeStamp";
 const char HTTP_ACCEPT_PORT[] = "HttpAcceptPort";

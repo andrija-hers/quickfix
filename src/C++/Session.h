@@ -174,6 +174,11 @@ public:
   void setResetOnDisconnect( bool value )
     { m_resetOnDisconnect = value; }
 
+  bool getResetOnWrongTime()
+    { return m_resetOnWrongTime; }
+  void setResetOnWrongTime( bool value )
+    { m_resetOnWrongTime = value; }
+
   bool getRefreshOnLogon()
     { return m_refreshOnLogon; }
   void setRefreshOnLogon( bool value )
@@ -297,6 +302,7 @@ private:
 
   bool set( int s, const Message& m );
   bool get( int s, Message& m ) const;
+  bool checkForSessionTime( const UtcTimeStamp& timeStamp );
 
   Application& m_application;
   SessionID m_sessionID;
@@ -312,6 +318,7 @@ private:
   bool m_resetOnLogon;
   bool m_resetOnLogout;
   bool m_resetOnDisconnect;
+  bool m_resetOnWrongTime;
   bool m_refreshOnLogon;
   bool m_millisecondsInTimeStamp;
   bool m_persistMessages;

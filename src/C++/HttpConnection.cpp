@@ -501,6 +501,11 @@ void HttpConnection::processSession
       pSession->setResetOnDisconnect( copy.getParameter(RESET_ON_DISCONNECT) != "0" );
       copy.removeParameter(RESET_ON_DISCONNECT);
     }
+    if( copy.hasParameter(RESET_ON_WRONG_TIME) )
+    {
+      pSession->setResetOnDisconnect( copy.getParameter(RESET_ON_WRONG_TIME) != "0" );
+      copy.removeParameter(RESET_ON_WRONG_TIME);
+    }
     if( copy.hasParameter(REFRESH_ON_LOGON) )
     {
       pSession->setRefreshOnLogon( copy.getParameter(REFRESH_ON_LOGON) != "0" );
@@ -545,6 +550,7 @@ void HttpConnection::processSession
     showRow( b, RESET_ON_LOGON, pSession->getResetOnLogon(), url );
     showRow( b, RESET_ON_LOGOUT, pSession->getResetOnLogout(), url );
     showRow( b, RESET_ON_DISCONNECT, pSession->getResetOnDisconnect(), url );
+    showRow( b, RESET_ON_WRONG_TIME, pSession->getResetOnWrongTime(), url );
     showRow( b, REFRESH_ON_LOGON, pSession->getRefreshOnLogon(), url );
     showRow( b, MILLISECONDS_IN_TIMESTAMP, pSession->getMillisecondsInTimeStamp(), url );
     showRow( b, PERSIST_MESSAGES, pSession->getPersistMessages(), url );

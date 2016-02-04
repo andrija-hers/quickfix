@@ -5,6 +5,8 @@ release
 *.opensdf
 *.suo
 *~
+*.swp
+*.swo
 *.lib
 *.lo
 *.in

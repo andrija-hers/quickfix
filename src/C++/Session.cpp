@@ -57,6 +57,7 @@ Session::Session( Application& application,
   m_resetOnLogon( false ),
   m_resetOnLogout( false ), 
   m_resetOnDisconnect( false ),
+  m_resetOnWrongTime( true ),
   m_refreshOnLogon( false ),
   m_millisecondsInTimeStamp( true ),
   m_persistMessages( true ),
@@ -72,8 +73,7 @@ Session::Session( Application& application,
   if ( m_pLogFactory )
     m_state.log( m_pLogFactory->create( m_sessionID ) );
 
-  if( !checkSessionTime(UtcTimeStamp()) )
-    reset();
+  checkForSessionTime(UtcTimeStamp());
 
   addSession( *this );
   m_application.onCreate( m_sessionID );
@@ -131,8 +131,8 @@ void Session::next( const UtcTimeStamp& timeStamp )
 {
   try
   {
-    if ( !checkSessionTime(timeStamp) )
-      { reset(); return; }
+    if ( !checkForSessionTime(timeStamp) )
+      return;
 
     if( !isEnabled() || !isLogonTime(timeStamp) )
     {
@@ -1010,6 +1010,22 @@ bool Session::verify( const Message& msg, bool checkTooHigh,
   return true;
 }
 
+bool Session::checkForSessionTime( const UtcTimeStamp& timeStamp )
+{
+  if( !checkSessionTime(timeStamp) ) 
+  {
+    if (m_resetOnWrongTime) 
+      reset();
+    else
+    {
+      generateLogout();
+      disconnect();
+    }
+    return false;
+  }
+  return true;
+}
+
 bool Session::shouldSendReset()
 {
   std::string beginString = m_sessionID.getBeginString();
@@ -1211,8 +1227,8 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
 
   try
   {
-    if ( !checkSessionTime(timeStamp) )
-      { reset(); return; }
+    if ( !checkForSessionTime(timeStamp) )
+      return;
 
     const MsgType& msgType = FIELD_GET_REF( header, MsgType );
     const BeginString& beginString = FIELD_GET_REF( header, BeginString );

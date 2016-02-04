@@ -64,7 +64,9 @@ namespace FIX
   {
     UtcTimeOnly timeOnly (time);
 
-    if( start < end )
+    if (start == end)
+      return true;
+    else if( start < end )
       return( timeOnly >= start && timeOnly <= end );
     else
       return( timeOnly >= start || timeOnly <= end );
