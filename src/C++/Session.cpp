@@ -73,8 +73,6 @@ Session::Session( Application& application,
   if ( m_pLogFactory )
     m_state.log( m_pLogFactory->create( m_sessionID ) );
 
-  checkForSessionTime(UtcTimeStamp());
-
   addSession( *this );
   m_application.onCreate( m_sessionID );
   m_state.onEvent( "Created session" );
@@ -86,6 +84,10 @@ Session::~Session()
   m_messageStoreFactory.destroy( m_state.store() );
   if ( m_pLogFactory && m_state.log() )
     m_pLogFactory->destroy( m_state.log() );
+}
+
+void Session::doInitialTimestampCheck() {
+  checkForSessionTime(UtcTimeStamp(), true);
 }
 
 void Session::insertSendingTime( Header& header )
@@ -131,8 +133,9 @@ void Session::next( const UtcTimeStamp& timeStamp )
 {
   try
   {
-    if ( !checkForSessionTime(timeStamp) )
+    if ( !checkForSessionTime(timeStamp, true) ) {
       return;
+    }
 
     if( !isEnabled() || !isLogonTime(timeStamp) )
     {
@@ -241,7 +244,10 @@ void Session::nextLogon( const Message& logon, const UtcTimeStamp& timeStamp )
   }
 
   if( !m_state.initiate() && m_resetOnLogon )
+  {
+    m_state.onEvent( "Should reset on logon");
     m_state.reset();
+  }
 
   if( !verify( logon, false, true ) )
     return;
@@ -484,6 +490,7 @@ bool Session::sendRaw( Message& message, int num )
 
         if( resetSeqNumFlag )
         {
+          m_state.onEvent("Resetting due to resetSeqNumFlag");
           m_state.reset();
           message.getHeader().setField( MsgSeqNum(getExpectedSenderNum()) );
         }
@@ -563,8 +570,10 @@ void Session::disconnect()
   m_state.sentReset( false );
   m_state.clearQueue();
   m_state.logoutReason();
-  if ( m_resetOnDisconnect )
+  if ( m_resetOnDisconnect ) {
+    m_state.onEvent("Reset on disconnect");
     m_state.reset();
+  }
 
   m_state.resendRange( 0, 0 );
 }
@@ -609,8 +618,10 @@ void Session::generateLogon()
     logon.setField( DefaultApplVerID(m_senderDefaultApplVerID) );  
   if( m_refreshOnLogon )
     refresh();
-  if( m_resetOnLogon )
+  if( m_resetOnLogon ) {
+    m_state.onEvent("Reset on logon");
     m_state.reset();
+  }
   if( shouldSendReset() )
     logon.setField( ResetSeqNumFlag(true) );
 
@@ -1010,16 +1021,24 @@ bool Session::verify( const Message& msg, bool checkTooHigh,
   return true;
 }
 
-bool Session::checkForSessionTime( const UtcTimeStamp& timeStamp )
+bool Session::checkForSessionTime( const UtcTimeStamp& timeStamp, bool disconnecttoo )
 {
   if( !checkSessionTime(timeStamp) ) 
   {
     if (m_resetOnWrongTime) 
+    {
+      m_state.onEvent("Reset on wrong time");
       reset();
+    }
     else
     {
-      generateLogout();
-      disconnect();
+      m_state.onEvent("softReset");
+      m_state.store()->softReset();
+      if (disconnecttoo)
+      {
+        generateLogout();
+        disconnect();
+      }
     }
     return false;
   }
@@ -1227,7 +1246,7 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
 
   try
   {
-    if ( !checkForSessionTime(timeStamp) )
+    if ( !checkForSessionTime(timeStamp, true) )
       return;
 
     const MsgType& msgType = FIELD_GET_REF( header, MsgType );

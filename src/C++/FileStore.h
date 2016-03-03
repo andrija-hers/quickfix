@@ -97,6 +97,7 @@ public:
   UtcTimeStamp getCreationTime() const throw ( IOException );
 
   void reset() throw ( IOException );
+  void softReset() { m_cache.softReset(); setSession(); };
   void refresh() throw ( IOException );
 
 private:

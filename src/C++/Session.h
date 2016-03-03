@@ -52,6 +52,7 @@ public:
            int heartBtInt, LogFactory* pLogFactory );
   virtual ~Session();
 
+  void doInitialTimestampCheck();
   void logon() 
   { m_state.enabled( true ); m_state.logoutReason( "" ); }
   void logout( const std::string& reason = "" ) 
@@ -201,8 +202,7 @@ public:
 
   void setResponder( Responder* pR )
   {
-    if( !checkSessionTime(UtcTimeStamp()) )
-      reset();
+    checkForSessionTime(UtcTimeStamp(), false);
     m_pResponder = pR;
   }
 
@@ -245,7 +245,12 @@ private:
   bool checkSessionTime( const UtcTimeStamp& timeStamp )
   {
     UtcTimeStamp creationTime = m_state.getCreationTime();
-    return m_sessionTime.isInSameRange( timeStamp, creationTime );
+    bool ret = m_sessionTime.isInSameRange( timeStamp, creationTime );
+    if (!ret)
+    {
+      m_state.onEvent(std::string("timeStamp ") + UtcTimeStampConvertor::convert(timeStamp) + " nok "+m_sessionTime.dump() + " with creationTime " + UtcTimeStampConvertor::convert(creationTime));
+    }
+    return ret;
   }
   bool isTargetTooHigh( const MsgSeqNum& msgSeqNum )
   { return msgSeqNum > ( m_state.getNextTargetMsgSeqNum() ); }
@@ -302,7 +307,7 @@ private:
 
   bool set( int s, const Message& m );
   bool get( int s, Message& m ) const;
-  bool checkForSessionTime( const UtcTimeStamp& timeStamp );
+  bool checkForSessionTime( const UtcTimeStamp& timeStamp, bool disconnecttoo );
 
   Application& m_application;
   SessionID m_sessionID;

@@ -26,6 +26,8 @@
 #include "TimeRange.h"
 #include "Utility.h"
 
+#include "FieldConvertors.h"
+
 namespace FIX
 {
   TimeRange::TimeRange( const UtcTimeOnly& startTime,
@@ -171,5 +173,38 @@ namespace FIX
     int absoluteDay1 = time1.getJulianDate() - time1.getWeekDay();
     int absoluteDay2 = time2.getJulianDate() - time2.getWeekDay();
     return absoluteDay1 == absoluteDay2;
+  }
+
+  static std::string dayAbbreviation(int day) {
+    switch (day)
+    {
+      case 0:
+        return "Sun ";
+      case 1:
+        return "Mon ";
+      case 2:
+        return "Tue ";
+      case 3:
+        return "Wed ";
+      case 4:
+        return "Thu ";
+      case 5:
+        return "Fri ";
+      case 6:
+        return "Sat ";
+      default:
+        return "";
+    }
+  }
+
+  std::string TimeRange::dump () const
+  {
+    std::string ret = std::string("[") + dayAbbreviation(m_startDay);
+    ret += UtcTimeOnlyConvertor::convert(m_startTime);
+    ret += " - ";
+    ret += dayAbbreviation(m_endDay);
+    ret += UtcTimeOnlyConvertor::convert(m_endTime);
+    ret += "]";
+    return ret;
   }
 }

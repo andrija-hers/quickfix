@@ -136,6 +136,13 @@ void MessageStoreExceptionWrapper::reset( bool& threw, IOException& ex )
   catch ( IOException & e ) { threw = true; ex = e; }
 }
 
+void MessageStoreExceptionWrapper::softReset( bool& threw, IOException& ex )
+{
+  threw = false;
+  try { m_pStore->softReset(); }
+  catch ( IOException & e ) { threw = true; ex = e; }
+}
+
 void MessageStoreExceptionWrapper::refresh( bool& threw, IOException& ex )
 {
   threw = false;

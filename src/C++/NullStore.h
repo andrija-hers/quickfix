@@ -86,6 +86,11 @@ public:
     m_nextSenderMsgSeqNum = 1; m_nextTargetMsgSeqNum = 1;
     m_creationTime.setCurrent();
   }
+
+  void softReset()
+  {
+    m_creationTime.setCurrent();
+  }
   void refresh() throw ( IOException ) {}
 
 private:

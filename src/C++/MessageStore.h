@@ -83,6 +83,7 @@ public:
   virtual UtcTimeStamp getCreationTime() const throw ( IOException ) = 0;
 
   virtual void reset() throw ( IOException ) = 0;
+  virtual void softReset() = 0;
   virtual void refresh() throw ( IOException ) = 0;
 };
 /*! @} */
@@ -123,6 +124,11 @@ public:
   {
     m_nextSenderMsgSeqNum = 1; m_nextTargetMsgSeqNum = 1;
     m_messages.clear(); m_creationTime.setCurrent();
+  }
+
+  void softReset()
+  {
+    m_creationTime.setCurrent();
   }
   void refresh() throw ( IOException ) {}
 
@@ -167,6 +173,7 @@ public:
   UtcTimeStamp getCreationTime( bool&, IOException& );
 
   void reset( bool&, IOException& );
+  void softReset( bool&, IOException& );
   void refresh( bool&, IOException& );
 };
 }

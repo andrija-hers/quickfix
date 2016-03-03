@@ -28,6 +28,7 @@
 
 #include "FieldTypes.h"
 
+
 namespace FIX
 {
 /// Keeps track of when session is active
@@ -236,6 +237,8 @@ public:
 
     return isInSameRange( (DateTime)time1, (DateTime)time2 );
   }
+
+  std::string dump() const; 
 
 private:
   bool isInSameRange( const DateTime& time1, const DateTime& time2 )
