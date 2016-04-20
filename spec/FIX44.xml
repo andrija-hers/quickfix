@@ -4244,7 +4244,7 @@
   <field number='136' name='NoMiscFees' type='NUMINGROUP' />
   <field number='137' name='MiscFeeAmt' type='AMT' />
   <field number='138' name='MiscFeeCurr' type='CURRENCY' />
-  <field number='139' name='MiscFeeType' type='CHAR'>
+  <field number='139' name='MiscFeeType' type='STRING'>
    <value enum='1' description='REGULATORY' />
    <value enum='2' description='TAX' />
    <value enum='3' description='LOCAL_COMMISSION' />
