@@ -116,7 +116,8 @@ DataDictionary& DataDictionary::operator=( const DataDictionary& rhs )
 
 void DataDictionary::validate( const Message& message,
                                const DataDictionary* const pSessionDD,
-                               const DataDictionary* const pAppDD )
+                               const DataDictionary* const pAppDD,
+                               const ValidationRules* vrptr )
 throw( FIX::Exception )
 {  
   const Header& header = message.getHeader();
@@ -141,22 +142,22 @@ throw( FIX::Exception )
   if ( pAppDD != 0 && pAppDD->m_hasVersion )
   {
     pAppDD->checkMsgType( msgType );
-    pAppDD->checkHasRequired( message.getHeader(), message, message.getTrailer(), msgType );
+    pAppDD->checkHasRequired( message.getHeader(), message, message.getTrailer(), msgType, vrptr );
   }
 
   if( pSessionDD != 0 )
   {
-    pSessionDD->iterate( message.getHeader(), msgType );
-    pSessionDD->iterate( message.getTrailer(), msgType );
+    pSessionDD->iterate( message.getHeader(), msgType, vrptr );
+    pSessionDD->iterate( message.getTrailer(), msgType, vrptr );
   }
 
   if( pAppDD != 0 )
   {
-    pAppDD->iterate( message, msgType );
+    pAppDD->iterate( message, msgType, vrptr );
   }
 }
 
-void DataDictionary::iterate( const FieldMap& map, const MsgType& msgType ) const
+void DataDictionary::iterate( const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr ) const
 {
   int lastField = 0;
 
@@ -166,21 +167,21 @@ void DataDictionary::iterate( const FieldMap& map, const MsgType& msgType ) cons
     const FieldBase& field = i->second;
     if( i != map.begin() && (field.getTag() == lastField) )
       throw RepeatedTag( lastField );
-    checkHasValue( field );
+    checkHasValue( field, vrptr );
 
     if ( m_hasVersion )
     {
-      checkValidFormat( field );
-      checkValue( field );
+      checkValidFormat( field, vrptr );
+      checkValue( field, vrptr );
     }
 
-    if ( m_beginString.getValue().length() && shouldCheckTag(field) )
+    if ( m_beginString.getValue().length() && shouldCheckTag( field, vrptr ) )
     {
-      checkValidTagNumber( field );
+      checkValidTagNumber( msgType, field, vrptr );
       if ( !Message::isHeaderField( field, this )
            && !Message::isTrailerField( field, this ) )
       {
-        checkIsInMessage( field, msgType );
+        checkIsInMessage( field, msgType, vrptr );
         checkGroupCount( field, map, msgType );
       }
     }

@@ -30,6 +30,7 @@
 #include "MessageSorters.h"
 #include "Exceptions.h"
 #include "Utility.h"
+#include "FieldConvertors.h"
 #include <map>
 #include <vector>
 #include <sstream>
@@ -129,7 +130,10 @@ public:
   {
     Fields::const_iterator iter = m_fields.find( tag );
     if ( iter == m_fields.end() )
-      throw FieldNotFound( tag );
+    {
+      std::string tagstring = IntConvertor::convert( tag );
+      throw FieldNotFound( tag, tagstring );
+    }
     return iter->second;
   }
 

@@ -325,7 +325,12 @@ throw( InvalidMessage )
       setField( field, false );
 
       if ( pApplicationDataDictionary )
+      {
+        if (field.getTag() == 453) {
+          std::cout << "setGroup on 453 from " << string.substr(pos) << std::endl;
+        }
         setGroup( msg, field, string, pos, *this, *pApplicationDataDictionary );
+      }
     }
   }
 
@@ -349,6 +354,9 @@ void Message::setGroup( const std::string& msg, const FieldBase& field,
     std::string::size_type oldPos = pos;
     FieldBase field = extractField( string, pos, &dataDictionary, &dataDictionary, pGroup.get() );
        
+    if (group == 453) {
+      std::cout << "On 453 field " << field.getTag() << " from " << string.substr( oldPos ) << std::endl;
+    }
     // Start a new group because...
     if (// found delimiter
     (field.getTag() == delim) ||

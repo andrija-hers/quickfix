@@ -62,6 +62,7 @@ Session::Session( Application& application,
   m_millisecondsInTimeStamp( true ),
   m_persistMessages( true ),
   m_validateLengthAndChecksum( true ),
+  m_validationRules( NULL ),
   m_dataDictionaryProvider( dataDictionaryProvider ),
   m_messageStoreFactory( messageStoreFactory ),
   m_pLogFactory( pLogFactory ),
@@ -84,6 +85,8 @@ Session::~Session()
   m_messageStoreFactory.destroy( m_state.store() );
   if ( m_pLogFactory && m_state.log() )
     m_pLogFactory->destroy( m_state.log() );
+  delete m_validationRules;
+  m_validationRules = NULL;
 }
 
 void Session::doInitialTimestampCheck() {
@@ -460,6 +463,20 @@ bool Session::send( Message& message )
   message.getHeader().removeField( FIELD::PossDupFlag );
   message.getHeader().removeField( FIELD::OrigSendingTime );
   return sendRaw( message );
+}
+
+Message* Session::messageFromString( const std::string& string )
+throw( FIX::Exception )
+{
+  if( m_sessionID.isFIXT() ) 
+    return new Message( string,
+      m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString()),
+      m_dataDictionaryProvider.getApplicationDataDictionary(m_targetDefaultApplVerID),
+      true );
+  else
+    return new Message( string,
+      m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString()),
+      true );
 }
 
 bool Session::sendRaw( Message& message, int num )
@@ -1280,11 +1297,11 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
       header.getFieldIfSet(applVerID);
       const DataDictionary& applicationDataDictionary = 
         m_dataDictionaryProvider.getApplicationDataDictionary(applVerID);
-      DataDictionary::validate( message, &sessionDataDictionary, &applicationDataDictionary );
+      DataDictionary::validate( message, &sessionDataDictionary, &applicationDataDictionary, 0 );
     }
     else
     {
-      sessionDataDictionary.validate( message );
+      sessionDataDictionary.validate( message, m_validationRules );
     }
 
     if ( msgType == MsgType_Logon )

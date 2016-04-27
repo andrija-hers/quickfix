@@ -32,21 +32,22 @@ namespace FIX
 /// Base QuickFIX exception type.
 struct Exception : public std::logic_error
 {
-  Exception( const std::string& t, const std::string& d )
+  Exception( const std::string& t, const std::string& d, int c )
   : std::logic_error( d.size() ? t + ": " + d : t ),
-    type( t ), detail( d )
+    type( t ), detail( d ), code ( c )
   {}
   ~Exception() throw() {}
 
   std::string type;
   std::string detail;
+  int code;
 };
 
 /// DataDictionary not found for BeginString or ApplVerID
 struct DataDictionaryNotFound : public Exception
 {
   DataDictionaryNotFound( const std::string& v, const std::string& what = "" )
-    : Exception( "Could not find data dictionary", what ),
+    : Exception( "Could not find data dictionary", what, 220 ),
                  version( v ) {}
   ~DataDictionaryNotFound() throw() {}
 
@@ -57,7 +58,7 @@ struct DataDictionaryNotFound : public Exception
 struct FieldNotFound : public Exception
 {
   FieldNotFound( int f = 0, const std::string& what = "" )
-    : Exception( "Field not found", what ),
+    : Exception( "Field not found", what, 150 ),
                  field( f ) {}
   int field;
 };
@@ -66,42 +67,42 @@ struct FieldNotFound : public Exception
 struct FieldConvertError : public Exception
 {
   FieldConvertError( const std::string& what = "" )
-    : Exception( "Could not convert field", what ) {}
+    : Exception( "Could not convert field", what, 1 ) {}
 };
 
 /// Unable to parse message
 struct MessageParseError : public Exception
 {
   MessageParseError( const std::string& what = "" )
-    : Exception( "Could not parse message", what ) {}
+    : Exception( "Could not parse message", what, 102 ) {}
 };
 
 /// Not a recognizable message
 struct InvalidMessage : public Exception
 {
   InvalidMessage( const std::string& what = "" )
-    : Exception( "Invalid message", what ) {}
+    : Exception( "Invalid message", what, 100 ) {}
 };
 
 /// %Application is not configured correctly
 struct ConfigError : public Exception
 {
   ConfigError( const std::string& what = "" )
-    : Exception( "Configuration failed", what ) {}
+    : Exception( "Configuration failed", what, 221 ) {}
 };
 
 /// %Application encountered serious error during runtime
 struct RuntimeError : public Exception
 {
   RuntimeError( const std::string& what = "" )
-    : Exception( "Runtime error", what ) {}
+    : Exception( "Runtime error", what, 400 ) {}
 };
 
 /// Tag number does not exist in specification
 struct InvalidTagNumber : public Exception
 {
   InvalidTagNumber( int f = 0, const std::string& what = "" )
-    : Exception( "Invalid tag number", what ),
+    : Exception( "Invalid tag number", what, 4 ),
                  field( f ) {}
   int field;
 };
@@ -110,7 +111,7 @@ struct InvalidTagNumber : public Exception
 struct RequiredTagMissing : public Exception
 {
   RequiredTagMissing( int f = 0, const std::string& what = "" )
-    : Exception( "Required tag missing", what ),
+    : Exception( "Required tag missing", what, 2 ),
                  field( f ) {}
   int field;
 };
@@ -119,7 +120,7 @@ struct RequiredTagMissing : public Exception
 struct TagNotDefinedForMessage : public Exception
 {
   TagNotDefinedForMessage( int f = 0, const std::string& what = "" )
-    : Exception( "Tag not defined for this message type", what ),
+    : Exception( "Tag not defined for this message type", what, 10 ),
                  field( f ) {}
   int field;
 };
@@ -128,7 +129,7 @@ struct TagNotDefinedForMessage : public Exception
 struct NoTagValue : public Exception
 {
   NoTagValue( int f = 0, const std::string& what = "" )
-    : Exception( "Tag specified without a value", what ),
+    : Exception( "Tag specified without a value", what, 5 ),
                  field( f ) {}
   int field;
 };
@@ -137,7 +138,7 @@ struct NoTagValue : public Exception
 struct IncorrectTagValue : public Exception
 {
   IncorrectTagValue( int f = 0, const std::string& what = "" )
-    : Exception( "Value is incorrect (out of range) for this tag", what ),
+    : Exception( "Value is incorrect (out of range) for this tag", what, 1 ),
                  field( f ) {}
   int field;
 };
@@ -146,7 +147,7 @@ struct IncorrectTagValue : public Exception
 struct IncorrectDataFormat : public Exception
 {
   IncorrectDataFormat( int f = 0, const std::string& what = "" )
-    : Exception( "Incorrect data format for value", what ),
+    : Exception( "Incorrect data format for value", what, 1 ),
                  field( f ) {}
   int field;
 };
@@ -155,42 +156,42 @@ struct IncorrectDataFormat : public Exception
 struct IncorrectMessageStructure : public Exception
 {
   IncorrectMessageStructure( const std::string& what = "" )
-    : Exception( "Incorrect message structure", what ) {}
+    : Exception( "Incorrect message structure", what, 100 ) {}
 };
 
 /// Field shows up twice in the message
 struct DuplicateFieldNumber : public Exception
 {
   DuplicateFieldNumber( const std::string& what = "" )
-    : Exception( "Duplicate field number", what ) {}
+    : Exception( "Duplicate field number", what, 100 ) {}
 };
 
 /// Not a known message type
 struct InvalidMessageType : public Exception
 {
   InvalidMessageType( const std::string& what = "" )
-    : Exception( "Invalid Message Type", what ) {}
+    : Exception( "Invalid Message Type", what, 101 ) {}
 };
 
 /// Message type not supported by application
 struct UnsupportedMessageType : public Exception
 {
   UnsupportedMessageType( const std::string& what = "" )
-    : Exception( "Unsupported Message Type", what ) {}
+    : Exception( "Unsupported Message Type", what, 101 ) {}
 };
 
 /// Version of %FIX is not supported
 struct UnsupportedVersion : public Exception
 {
   UnsupportedVersion( const std::string& what = "" )
-    : Exception( "Unsupported Version", what ) {}
+    : Exception( "Unsupported Version", what, 0 ) {}
 };
 
 /// Tag is not in the correct order
 struct TagOutOfOrder : public Exception
 {
   TagOutOfOrder( int f = 0, const std::string& what = "" )
-    : Exception( "Tag specified out of required order", what ),
+    : Exception( "Tag specified out of required order", what, 6 ),
                  field( f ) {}
   int field;
 };
@@ -199,7 +200,7 @@ struct TagOutOfOrder : public Exception
 struct RepeatedTag : public Exception
 {
   RepeatedTag( int f = 0, const std::string& what = "" )
-    : Exception( "Repeated tag not part of repeating group", what ),
+    : Exception( "Repeated tag not part of repeating group", what, 112 ),
                  field( f ) {}
   int field;
 };
@@ -208,7 +209,7 @@ struct RepeatedTag : public Exception
 struct RepeatingGroupCountMismatch : public Exception
 {
   RepeatingGroupCountMismatch( int f = 0, const std::string& what = "" )
-    : Exception( "Repeating group count mismatch", what ),
+    : Exception( "Repeating group count mismatch", what, 113 ),
                  field( f ) {}
   int field;
 };
@@ -217,38 +218,38 @@ struct RepeatingGroupCountMismatch : public Exception
 struct DoNotSend : public Exception
 {
   DoNotSend( const std::string& what = "" )
-    : Exception( "Do Not Send Message", what ) {}
+    : Exception( "Do Not Send Message", what, 150 ) {}
 };
 
 /// User wants to reject permission to logon
 struct RejectLogon : public Exception
 {
   RejectLogon( const std::string& what = "" )
-    : Exception( "Rejected Logon Attempt", what ) {}
+    : Exception( "Rejected Logon Attempt", what, 204 ) {}
 };
 
 /// Session cannot be found for specified action
 struct SessionNotFound : public Exception
 {
   SessionNotFound( const std::string& what = "" )
-    : Exception( "Session Not Found", what ) {}
+    : Exception( "Session Not Found", what, 202 ) {}
 };
 
 /// IO Error
 struct IOException : public Exception
 {
   IOException( const std::string& what = "" )
-    : Exception( "IO Error", what ) {}
+    : Exception( "IO Error", what, 401 ) {}
 };
 
 /// Socket Error
 struct SocketException : public Exception
 {
   SocketException()
-    : Exception( "Socket Error", errorToWhat() ) {}
+    : Exception( "Socket Error", errorToWhat(), 402 ) {}
 
   SocketException( const std::string& what )
-    : Exception( "Socket Error", what ) {}
+    : Exception( "Socket Error", what, 402 ) {}
 
   std::string errorToWhat()
   {

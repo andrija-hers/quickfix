@@ -11,6 +11,8 @@ libquickfix_la_SOURCES = \
 	TimeRange.cpp \
 	TimeRange.h \
 	SessionState.h \
+  ValidationRules.cpp \
+  ValidationRules.h \
 	SessionFactory.h \
 	SessionFactory.cpp \
 	Parser.cpp \

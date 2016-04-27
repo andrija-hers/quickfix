@@ -29,6 +29,7 @@
 #include "SessionFactory.h"
 #include "SessionSettings.h"
 #include "Session.h"
+#include "ValidationRules.h"
 
 #include <memory>
 
@@ -196,6 +197,16 @@ Session* SessionFactory::create( const SessionID& sessionID,
     pSession->setPersistMessages( settings.getBool( PERSIST_MESSAGES ) );
   if ( settings.has( VALIDATE_LENGTH_AND_CHECKSUM ) )
     pSession->setValidateLengthAndChecksum( settings.getBool( VALIDATE_LENGTH_AND_CHECKSUM ) );
+
+  ValidationRules *vrptr = new ValidationRules;
+  if ( settings.has( VALIDATE_BOUNDS ) )
+    vrptr->setValidateBounds( settings.getBool( VALIDATE_BOUNDS ) );
+  if ( settings.has( ALLOWED_FIELDS ) )
+    vrptr->setAllowedFields( settings.getString( ALLOWED_FIELDS ) );
+  if ( settings.has( VALIDATION_RULES ) )
+    vrptr->setValidationRules( settings.getString( VALIDATION_RULES ) );
+
+  pSession->setValidationRules( vrptr );
   pSession->doInitialTimestampCheck();
    
   return pSession.release();

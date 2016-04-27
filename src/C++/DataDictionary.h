@@ -33,6 +33,7 @@
 #include <set>
 #include <map>
 #include <string.h>
+#include "ValidationRules.h"
 
 namespace FIX
 {
@@ -269,12 +270,14 @@ public:
                  const DataDictionary*& pDataDictionary ) const
   {
     FieldToGroup::const_iterator i = m_groups.find( field );
-    if ( i == m_groups.end() ) return false;
+    if ( i == m_groups.end() ) 
+      return false;
 
     const FieldPresenceMap& presenceMap = i->second;
 
     FieldPresenceMap::const_iterator iter = presenceMap.find( msg );
-    if( iter == presenceMap.end() ) return false;
+    if( iter == presenceMap.end() )
+      return false;
 
     std::pair < int, DataDictionary* > pair = iter->second;
     delim = pair.first;
@@ -307,18 +310,19 @@ public:
   /// Validate a message.
   static void validate( const Message& message,
                         const DataDictionary* const pSessionDD,
-                        const DataDictionary* const pAppID ) throw( FIX::Exception );
+                        const DataDictionary* const pAppID,
+                        const ValidationRules* vrptr ) throw( FIX::Exception );
 
-  void validate( const Message& message ) const throw ( FIX::Exception )
-  { validate( message, false ); }
-  void validate( const Message& message, bool bodyOnly ) const throw( FIX::Exception )
-  { validate( message, bodyOnly ? (DataDictionary*)0 : this, this ); }
+  void validate( const Message& message, const ValidationRules* vrptr = 0 ) const throw ( FIX::Exception )
+  { validate( message, false, vrptr ); }
+  void validate( const Message& message, bool bodyOnly, const ValidationRules* vrptr = 0 ) const throw( FIX::Exception )
+  { validate( message, bodyOnly ? (DataDictionary*)0 : this, this, vrptr ); }
 
   DataDictionary& operator=( const DataDictionary& rhs );
 
 private:
   /// Iterate through fields while applying checks.
-  void iterate( const FieldMap& map, const MsgType& msgType ) const;
+  void iterate( const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr = 0 ) const;
 
   /// Check if message type is defined in spec.
   void checkMsgType( const MsgType& msgType ) const
@@ -328,8 +332,10 @@ private:
   }
 
   /// If we need to check for the tag in the dictionary
-  bool shouldCheckTag( const FieldBase& field ) const
+  bool shouldCheckTag( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   {
+    if( vrptr && !vrptr->shouldCheckTag( field ) )
+      return false;
     if( !m_checkUserDefinedFields && field.getTag() >= FIELD::UserMin )
       return false;
     else
@@ -337,16 +343,22 @@ private:
   }
 
   /// Check if field tag number is defined in spec.
-  void checkValidTagNumber( const FieldBase& field ) const
+  void checkValidTagNumber( const MsgType& msgType, const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   throw( InvalidTagNumber )
   {
     if( m_fields.find( field.getTag() ) == m_fields.end() )
+    {
+      if (vrptr && vrptr->shouldTolerateMissingTag( msgType, field ) ) 
+        return;
       throw InvalidTagNumber( field.getTag() );
+    }
   }
 
-  void checkValidFormat( const FieldBase& field ) const
+  void checkValidFormat( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   throw( IncorrectDataFormat )
   {
+    if ( vrptr && !vrptr->shouldCheckTag( field ) )
+      return;
     try
     {
       TYPE::Type type = TYPE::Unknown;
@@ -420,31 +432,43 @@ private:
     { throw IncorrectDataFormat( field.getTag(), field.getString() ); }
   }
 
-  void checkValue( const FieldBase& field ) const
+  void checkValue( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   throw( IncorrectTagValue )
   {
     if ( !hasFieldValue( field.getTag() ) ) return ;
 
     const std::string& value = field.getString();
     if ( !isFieldValue( field.getTag(), value ) )
+    {
+      if (vrptr && vrptr->shouldTolerateTagValue( field ) )
+        return;
       throw IncorrectTagValue( field.getTag() );
+    }
   }
 
   /// Check if a field has a value.
-  void checkHasValue( const FieldBase& field ) const
+  void checkHasValue( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   throw( NoTagValue )
   {
+    if ( vrptr && !vrptr->shouldCheckTag( field ) )
+      return;
     if ( m_checkFieldsHaveValues && !field.getString().length() )
       throw NoTagValue( field.getTag() );
   }
 
   /// Check if a field is in this message type.
   void checkIsInMessage
-  ( const FieldBase& field, const MsgType& msgType ) const
+  ( const FieldBase& field, const MsgType& msgType, const ValidationRules* vrptr = 0 ) const
   throw( TagNotDefinedForMessage )
   {
     if ( !isMsgField( msgType, field.getTag() ) )
+    {
+      if (vrptr && vrptr->shouldAllowTag( msgType, field ) )
+      {
+        return;
+      }
       throw TagNotDefinedForMessage( field.getTag() );
+    }
   }
 
   /// Check if group count matches number of groups in
@@ -457,27 +481,35 @@ private:
     {
       if( (int)fieldMap.groupCount(fieldNum)
         != IntConvertor::convert(field.getString()) )
-      throw RepeatingGroupCountMismatch(fieldNum);
+      {
+        std::cout << fieldNum << " RepeatingGroupCountMismatch, " << fieldMap.groupCount(fieldNum) << " != " << field.getString() << std::endl;
+        throw RepeatingGroupCountMismatch(fieldNum);
+      }
     }
   }
 
   /// Check if a message has all required fields.
   void checkHasRequired
   ( const FieldMap& header, const FieldMap& body, const FieldMap& trailer,
-    const MsgType& msgType ) const
+    const MsgType& msgType,
+    const ValidationRules* vrptr ) const
   throw( RequiredTagMissing )
   {
     NonBodyFields::const_iterator iNBF;
     for( iNBF = m_headerFields.begin(); iNBF != m_headerFields.end(); ++iNBF )
     {
       if( iNBF->second == true && !header.isSetField(iNBF->first) )
-        throw RequiredTagMissing( iNBF->first );
+      {
+        if ( ! (vrptr && vrptr->shouldTolerateMissingTag( msgType, iNBF->first ) ) )
+          throw RequiredTagMissing( iNBF->first );
+      }
     }
 
     for( iNBF = m_trailerFields.begin(); iNBF != m_trailerFields.end(); ++iNBF )
     {
       if( iNBF->second == true && !trailer.isSetField(iNBF->first) )
-        throw RequiredTagMissing( iNBF->first );
+        if ( ! (vrptr && vrptr->shouldTolerateMissingTag( msgType, iNBF->first ) ) )
+          throw RequiredTagMissing( iNBF->first );
     }
 
     MsgTypeToField::const_iterator iM
@@ -489,7 +521,8 @@ private:
     for( iF = fields.begin(); iF != fields.end(); ++iF )
     {
       if( !body.isSetField(*iF) )
-        throw RequiredTagMissing( *iF );
+        if ( ! (vrptr && vrptr->shouldTolerateMissingTag( msgType, *iF ) ) )
+          throw RequiredTagMissing( *iF );
     }
 
     FieldMap::g_iterator groups;
@@ -502,7 +535,7 @@ private:
       {
         std::vector<FieldMap*>::const_iterator group;
         for( group = groups->second.begin(); group != groups->second.end(); ++group )
-          DD->checkHasRequired( **group, **group, **group, msgType );
+          DD->checkHasRequired( **group, **group, **group, msgType, vrptr );
       }
     }
   }

@@ -42,6 +42,7 @@
 namespace FIX
 {
 /// Maintains the state and implements the logic of a %FIX %session.
+class ValidationRules;
 class Session
 {
 public:
@@ -200,6 +201,9 @@ public:
   void setValidateLengthAndChecksum ( bool value )
     { m_validateLengthAndChecksum = value; }
 
+  void setValidationRules ( ValidationRules* vrptr ) 
+    { m_validationRules = vrptr; }
+
   void setResponder( Responder* pR )
   {
     checkForSessionTime(UtcTimeStamp(), false);
@@ -207,6 +211,8 @@ public:
   }
 
   bool send( Message& );
+  Message* messageFromString( const std::string& string )
+  throw( FIX::Exception );
   void next();
   void next( const UtcTimeStamp& timeStamp );
   void next( const std::string&, const UtcTimeStamp& timeStamp, bool queued = false );
@@ -328,6 +334,7 @@ private:
   bool m_millisecondsInTimeStamp;
   bool m_persistMessages;
   bool m_validateLengthAndChecksum;
+  ValidationRules* m_validationRules;
 
   SessionState m_state;
   DataDictionaryProvider m_dataDictionaryProvider;
