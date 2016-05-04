@@ -500,7 +500,7 @@ bool Session::sendRaw( Message& message, int num )
     {
       m_application.toAdmin( message, m_sessionID );
 
-      if( msgType == "A" && !m_state.receivedReset() )
+      if( msgType == MsgType_Logon && !m_state.receivedReset() )
       {
         ResetSeqNumFlag resetSeqNumFlag( false );
         message.getFieldIfSet(resetSeqNumFlag);
@@ -520,7 +520,7 @@ bool Session::sendRaw( Message& message, int num )
         persist( message, messageString );
 
       if (
-        msgType == "A" || msgType == "5"
+        msgType == MsgType_Logon || msgType == "5"
         || msgType == "2" || msgType == "4"
         || isLoggedOn() )
       {
