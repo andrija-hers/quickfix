@@ -74,12 +74,21 @@ namespace FIX
 const std::string ValidationRules::AnyMsgType = "?";
 
 ValidationRules::ValidationRules ()
-: m_validateBounds(true)
+: m_validate(true),
+m_validateBounds(true),
+m_allowedFields(),
+m_allowedEmptyFields(),
+m_allowedMissingFields()
 {
 }
 
 ValidationRules::~ValidationRules ()
 {
+}
+
+void ValidationRules::setShouldValidate( bool validate )
+{
+  m_validate = validate;
 }
 
 void ValidationRules::setValidateBounds( bool validatebounds )
@@ -95,6 +104,11 @@ void ValidationRules::setAllowedFields ( const std::string& allowedfieldstr )
 void ValidationRules::setValidationRules ( const std::string& validationrulesstr ) 
 {
   split( validationrulesstr, ",", std::bind( &ValidationRules::addValidationRule, this, std::placeholders::_1 ) );
+}
+
+bool ValidationRules::shouldValidate ( ) const
+{
+  return m_validate;
 }
 
 bool ValidationRules::shouldCheckTag ( const FieldBase& field ) const

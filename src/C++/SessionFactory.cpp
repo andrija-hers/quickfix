@@ -199,6 +199,8 @@ Session* SessionFactory::create( const SessionID& sessionID,
     pSession->setValidateLengthAndChecksum( settings.getBool( VALIDATE_LENGTH_AND_CHECKSUM ) );
 
   ValidationRules *vrptr = new ValidationRules;
+  if ( settings.has( VALIDATE ) )
+    vrptr->setShouldValidate( settings.getBool( VALIDATE ) );
   if ( settings.has( VALIDATE_BOUNDS ) )
     vrptr->setValidateBounds( settings.getBool( VALIDATE_BOUNDS ) );
   if ( settings.has( ALLOWED_FIELDS ) )

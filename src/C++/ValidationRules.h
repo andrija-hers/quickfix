@@ -35,10 +35,12 @@ class ValidationRules
     ValidationRules();
     virtual ~ValidationRules();
 
+    void setShouldValidate ( bool validate );
     void setValidateBounds ( bool validatebounds );
     void setAllowedFields ( const std::string& allowedfieldstr );
     void setValidationRules ( const std::string& validationrulesstr );
 
+    bool shouldValidate ( ) const;
     bool shouldCheckTag ( const FieldBase& field ) const;
     bool shouldTolerateMissingTag ( const std::string& msgType, int tag ) const;
     bool shouldTolerateMissingTag ( const std::string& msgType, const FieldBase& field ) const;
@@ -49,6 +51,7 @@ class ValidationRules
     static const std::string AnyMsgType;
     typedef std::set<int> MsgTypeValues;
     typedef std::map< std::string, MsgTypeValues > MsgTypeMap;
+    bool m_validate;
     bool m_validateBounds;
     MsgTypeMap m_allowedFields;
     MsgTypeMap m_allowedEmptyFields;

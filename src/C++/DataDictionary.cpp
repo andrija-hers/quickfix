@@ -120,6 +120,8 @@ void DataDictionary::validate( const Message& message,
                                const ValidationRules* vrptr )
 throw( FIX::Exception )
 {  
+  if ( vrptr && ! vrptr->shouldValidate() )
+    return;
   const Header& header = message.getHeader();
   const BeginString& beginString = FIELD_GET_REF( header, BeginString );
   const MsgType& msgType = FIELD_GET_REF( header, MsgType );
@@ -159,6 +161,8 @@ throw( FIX::Exception )
 
 void DataDictionary::iterate( const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr ) const
 {
+  if ( vrptr && ! vrptr->shouldValidate() )
+    return;
   int lastField = 0;
 
   FieldMap::iterator i;
