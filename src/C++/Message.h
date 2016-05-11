@@ -75,17 +75,18 @@ public:
   Message();
 
   /// Construct a message from a string
-  Message( const std::string& string, bool validate = true )
+  Message( const std::string& string, bool validate = true, const ValidationRules* vrptr =  0 )
   throw( InvalidMessage );
 
   /// Construct a message from a string using a data dictionary
   Message( const std::string& string, const FIX::DataDictionary& dataDictionary,
-           bool validate = true )
+           bool validate = true, const ValidationRules* vrptr =  0 )
   throw( InvalidMessage );
 
   /// Construct a message from a string using a session and application data dictionary
   Message( const std::string& string, const FIX::DataDictionary& sessionDataDictionary,
-           const FIX::DataDictionary& applicationDataDictionary, bool validate = true )
+           const FIX::DataDictionary& applicationDataDictionary, bool validate = true,
+           const ValidationRules* vrptr =  0 )
   throw( InvalidMessage );
 
   Message( const Message& copy )
@@ -164,17 +165,19 @@ public:
   { setString(string, true); }
   void setString( const std::string& string, bool validate )
   throw( InvalidMessage )
-  { setString(string, validate, 0); }
+  { setString(string, validate, 0, 0); }
   void setString( const std::string& string,
                   bool validate,
-                  const FIX::DataDictionary* pDataDictionary )
+                  const FIX::DataDictionary* pDataDictionary,
+                  const FIX::ValidationRules* vrptr = 0 )
   throw( InvalidMessage )
-  { setString(string, validate, pDataDictionary, pDataDictionary); }
+  { setString(string, validate, pDataDictionary, pDataDictionary, vrptr); }
 
   void setString( const std::string& string,
                   bool validate,
                   const FIX::DataDictionary* pSessionDataDictionary,
-                  const FIX::DataDictionary* pApplicationDataDictionary )
+                  const FIX::DataDictionary* pApplicationDataDictionary,
+                  const FIX::ValidationRules* vrptr )
   throw( InvalidMessage );
 
   void setGroup( const std::string& msg, const FieldBase& field,
@@ -329,6 +332,16 @@ private:
     }
 
     return false;
+  }
+
+  bool shouldCheckFieldsOutOfOrder ( bool doValidation, 
+                                      const DataDictionary* pSessionDataDictionary,
+                                      const DataDictionary* pApplicationDataDictionary )
+  {
+    return doValidation && ( ! (
+        ( pSessionDataDictionary && pSessionDataDictionary->getCheckFieldsOutOfOrder() == false ) ||
+        ( pApplicationDataDictionary && pApplicationDataDictionary->getCheckFieldsOutOfOrder() == false )
+        ) ); 
   }
 
   void validate();

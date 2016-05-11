@@ -35,7 +35,7 @@ std::auto_ptr<DataDictionary> Message::s_dataDictionary;
 Message::Message()
 : m_validStructure( true ) {}
 
-Message::Message( const std::string& string, bool validate )
+Message::Message( const std::string& string, bool validate, const ValidationRules* vrptr )
 throw( InvalidMessage )
 : m_validStructure( true )
 {
@@ -44,25 +44,25 @@ throw( InvalidMessage )
 
 Message::Message( const std::string& string,
                   const DataDictionary& dataDictionary,
-                  bool validate )
+                  bool validate, const ValidationRules* vrptr )
 throw( InvalidMessage )
 : m_validStructure( true )
 {
-  setString( string, validate, &dataDictionary, &dataDictionary );
+  setString( string, validate, &dataDictionary, &dataDictionary, vrptr );
 }
 
 Message::Message( const std::string& string,
                   const DataDictionary& sessionDataDictionary,
                   const DataDictionary& applicationDataDictionary,
-                  bool validate )
+                  bool validate, const ValidationRules* vrptr )
 throw( InvalidMessage )
 : m_validStructure( true )
 {
   setStringHeader( string );
   if( isAdmin() )
-    setString( string, validate, &sessionDataDictionary, &sessionDataDictionary );
+    setString( string, validate, &sessionDataDictionary, &sessionDataDictionary, vrptr );
   else
-    setString( string, validate, &sessionDataDictionary, &applicationDataDictionary );
+    setString( string, validate, &sessionDataDictionary, &applicationDataDictionary, vrptr );
 }
 
 bool Message::InitializeXML( const std::string& url )
@@ -265,7 +265,8 @@ std::string Message::toXMLFields(const FieldMap& fields, int space) const
 void Message::setString( const std::string& string,
                          bool doValidation,
                          const DataDictionary* pSessionDataDictionary,
-                         const DataDictionary* pApplicationDataDictionary )
+                         const DataDictionary* pApplicationDataDictionary,
+                         const ValidationRules* vrptr )
 throw( InvalidMessage )
 {
   clear();
@@ -287,14 +288,17 @@ throw( InvalidMessage )
   {
     FieldBase field = extractField( string, pos, pSessionDataDictionary, pApplicationDataDictionary );
     if ( count < 3 && headerOrder[ count++ ] != field.getTag() )
-      if ( doValidation ) throw InvalidMessage("Header fields out of order");
+      if ( shouldCheckFieldsOutOfOrder( doValidation, pSessionDataDictionary, pApplicationDataDictionary ) )
+        throw InvalidMessage("Header fields out of order");
 
     if ( isHeaderField( field, pSessionDataDictionary ) )
     {
       if ( type != header )
       {
         if(m_tag == 0) m_tag = field.getTag();
-        m_validStructure = false;
+        m_validStructure = shouldCheckFieldsOutOfOrder( doValidation,
+                                                        pSessionDataDictionary,
+                                                        pApplicationDataDictionary );
       }
 
       if ( field.getTag() == FIELD::MsgType )
@@ -318,7 +322,9 @@ throw( InvalidMessage )
       if ( type == trailer )
       {
         if(m_tag == 0) m_tag = field.getTag();
-        m_validStructure = false;
+        m_validStructure = shouldCheckFieldsOutOfOrder( doValidation,
+                                                        pSessionDataDictionary,
+                                                        pApplicationDataDictionary );
       }
 
       type = body;
@@ -326,9 +332,6 @@ throw( InvalidMessage )
 
       if ( pApplicationDataDictionary )
       {
-        if (field.getTag() == 453) {
-          std::cout << "setGroup on 453 from " << string.substr(pos) << std::endl;
-        }
         setGroup( msg, field, string, pos, *this, *pApplicationDataDictionary );
       }
     }
