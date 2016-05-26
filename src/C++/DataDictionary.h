@@ -300,13 +300,10 @@ public:
           || i->second == TYPE::MultipleStringValue );
   }
 
-  bool getCheckFieldsOutOfOrder ( ) const { return m_checkFieldsOutOfOrder; }
   void checkFieldsOutOfOrder( bool value )
   { m_checkFieldsOutOfOrder = value; }
-  bool getCheckFieldsHaveValues ( ) const { return m_checkFieldsHaveValues; }
   void checkFieldsHaveValues( bool value )
   { m_checkFieldsHaveValues = value; }
-  bool getCheckUserDefinedFields ( ) const { return m_checkUserDefinedFields; }
   void checkUserDefinedFields( bool value )
   { m_checkUserDefinedFields = value; }
 
