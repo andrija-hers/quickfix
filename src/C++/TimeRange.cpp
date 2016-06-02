@@ -85,6 +85,8 @@ namespace FIX
 
     if( startDay == endDay )
     {
+      if( startTime == endTime)
+        return true;
       if( day != startDay )
         return true;
       return isInRange( startTime, endTime, time );
@@ -124,7 +126,7 @@ namespace FIX
                                  const DateTime& time1,
                                  const DateTime& time2 )
   {
-    if( time1 == time2 ) return true;
+    if( start == end ) return true;
 
     if( !isInRange( start, end, time1 ) ) return false;
     if( !isInRange( start, end, time2 ) ) return false;
@@ -164,6 +166,8 @@ namespace FIX
                                  const DateTime& time1,
                                  const DateTime& time2 )
   {
+    if( startTime == endTime && startDay == endDay)
+      return true;
     if( !isInRange( startTime, endTime, startDay, endDay, time1, time1.getWeekDay() ) )
       return false;
 
