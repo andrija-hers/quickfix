@@ -231,6 +231,8 @@ TEST_FIXTURE(checkValidTagNumberFixture, checkValidTagNumber)
   TestReqID testReqID( "1" );
   FIX40::TestRequest message( testReqID );
   message.setField( TooHigh( "value" ) );
+  ValidationRules vr;
+  vr.setValidateUserDefinedFields(false);
   CHECK_THROW( object.validate( message ), InvalidTagNumber );
 
   object.addField( 501 );
@@ -240,14 +242,15 @@ TEST_FIXTURE(checkValidTagNumberFixture, checkValidTagNumber)
   message.setField( FIELD::UserMin, "value" );
   CHECK_THROW( object.validate( message ), InvalidTagNumber );
 
-  object.checkUserDefinedFields( false );
-  object.validate( message );
+  object.validate( message, &vr );
 }
 
 TEST(checkHasValue)
 {
   DataDictionary object;
-  Message testReqID( "8=FIX.4.2\0019=12\00135=1\001112=\00110=007\001", false );
+  ValidationRules vr;
+  vr.setShouldValidate(false);
+  Message testReqID( "8=FIX.4.2\0019=12\00135=1\001112=\00110=007\001", &vr );
   FIX42::TestRequest message( testReqID );
 
   CHECK_THROW( object.validate( message ), NoTagValue );
@@ -431,13 +434,15 @@ TEST( checkGroupRequiredFields )
 {
   DataDictionary object( "../spec/FIX44.xml" );
   FIX44::NewOrderList newOrderList;
-  newOrderList.setString("8=FIX.4.49=18635=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=111=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=119", false, &object);
+  ValidationRules vr;
+  vr.setShouldValidate(false);
+  newOrderList.setString("8=FIX.4.49=18635=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=111=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=119", &vr, &object);
   object.validate( newOrderList );
 
-  newOrderList.setString("8=FIX.4.49=15835=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=036", false, &object);
+  newOrderList.setString("8=FIX.4.49=15835=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=036", &vr, &object);
   CHECK_THROW( object.validate( newOrderList ), RequiredTagMissing );
 
-  newOrderList.setString("8=FIX.4.49=26935=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=211=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD11=SE104555=MSFT67=163=021=381=060=20050225-16:54:3238=1000040=115=USD47=A10=109", false, &object);
+  newOrderList.setString("8=FIX.4.49=26935=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=211=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD11=SE104555=MSFT67=163=021=381=060=20050225-16:54:3238=1000040=115=USD47=A10=109", &vr, &object);
   CHECK_THROW( object.validate( newOrderList ), RequiredTagMissing );
 
   FIX44::MarketDataRequest marketDataRequest(
@@ -487,7 +492,7 @@ TEST( checkGroupRequiredFields )
   entry.set( MDEntrySize( 300 ) );
   md.addGroup( entry );
 
-  Message message( md.toString(), object );
+  Message message( md.toString(), NULL );
   object.validate( message );
   //object.validate( md );
 }

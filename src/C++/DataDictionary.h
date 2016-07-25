@@ -300,13 +300,6 @@ public:
           || i->second == TYPE::MultipleStringValue );
   }
 
-  void checkFieldsOutOfOrder( bool value )
-  { m_checkFieldsOutOfOrder = value; }
-  void checkFieldsHaveValues( bool value )
-  { m_checkFieldsHaveValues = value; }
-  void checkUserDefinedFields( bool value )
-  { m_checkUserDefinedFields = value; }
-
   /// Validate a message.
   static void validate( const Message& message,
                         const DataDictionary* const pSessionDD,
@@ -334,9 +327,9 @@ private:
   /// If we need to check for the tag in the dictionary
   bool shouldCheckTag( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   {
-    if( vrptr && !vrptr->shouldCheckTag( field ) )
+    if( !ValidationRules::shouldCheckTag( vrptr, field ) )
       return false;
-    if( !m_checkUserDefinedFields && field.getTag() >= FIELD::UserMin )
+    if( field.getTag() >= FIELD::UserMin )
       return false;
     else
       return true;
@@ -348,7 +341,7 @@ private:
   {
     if( m_fields.find( field.getTag() ) == m_fields.end() )
     {
-      if (vrptr && vrptr->shouldTolerateMissingTag( msgType, field ) ) 
+      if ( ValidationRules::shouldTolerateMissingTag( vrptr, msgType, field ) ) 
         return;
       throw InvalidTagNumber( field.getTag() );
     }
@@ -357,7 +350,7 @@ private:
   void checkValidFormat( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   throw( IncorrectDataFormat )
   {
-    if ( vrptr && !vrptr->shouldCheckTag( field ) )
+    if ( !ValidationRules::shouldCheckTag( vrptr, field ) )
       return;
     try
     {
@@ -440,7 +433,7 @@ private:
     const std::string& value = field.getString();
     if ( !isFieldValue( field.getTag(), value ) )
     {
-      if (vrptr && vrptr->shouldTolerateTagValue( field ) )
+      if( ValidationRules::shouldTolerateTagValue( vrptr, field ) )
         return;
       throw IncorrectTagValue( field.getTag() );
     }
@@ -450,9 +443,9 @@ private:
   void checkHasValue( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   throw( NoTagValue )
   {
-    if ( vrptr && !vrptr->shouldCheckTag( field ) )
+    if ( ValidationRules::shouldCheckTag( vrptr, field ) )
       return;
-    if ( m_checkFieldsHaveValues && !field.getString().length() )
+    if ( !field.getString().length() )
       throw NoTagValue( field.getTag() );
   }
 
@@ -463,10 +456,8 @@ private:
   {
     if ( !isMsgField( msgType, field.getTag() ) )
     {
-      if (vrptr && vrptr->shouldAllowTag( msgType, field ) )
-      {
+      if (ValidationRules::shouldAllowTag( vrptr, msgType, field ) )
         return;
-      }
       throw TagNotDefinedForMessage( field.getTag() );
     }
   }
@@ -500,7 +491,7 @@ private:
     {
       if( iNBF->second == true && !header.isSetField(iNBF->first) )
       {
-        if ( ! (vrptr && vrptr->shouldTolerateMissingTag( msgType, iNBF->first ) ) )
+        if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, msgType, iNBF->first ) ) 
           throw RequiredTagMissing( iNBF->first );
       }
     }
@@ -508,7 +499,7 @@ private:
     for( iNBF = m_trailerFields.begin(); iNBF != m_trailerFields.end(); ++iNBF )
     {
       if( iNBF->second == true && !trailer.isSetField(iNBF->first) )
-        if ( ! (vrptr && vrptr->shouldTolerateMissingTag( msgType, iNBF->first ) ) )
+        if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, msgType, iNBF->first ) ) 
           throw RequiredTagMissing( iNBF->first );
     }
 
@@ -521,7 +512,7 @@ private:
     for( iF = fields.begin(); iF != fields.end(); ++iF )
     {
       if( !body.isSetField(*iF) )
-        if ( ! (vrptr && vrptr->shouldTolerateMissingTag( msgType, *iF ) ) )
+        if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, msgType, *iF ) ) 
           throw RequiredTagMissing( *iF );
     }
 
@@ -547,9 +538,9 @@ private:
   TYPE::Type XMLTypeToType( const std::string& xmlType ) const;
 
   bool m_hasVersion;
-  bool m_checkFieldsOutOfOrder;
-  bool m_checkFieldsHaveValues;
-  bool m_checkUserDefinedFields;
+  //bool m_checkFieldsOutOfOrder;
+  //bool m_checkFieldsHaveValues;
+  //bool m_checkUserDefinedFields;
   BeginString m_beginString;
   MsgTypeToField m_messageFields;
   MsgTypeToField m_requiredFields;

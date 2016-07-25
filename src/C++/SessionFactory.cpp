@@ -29,7 +29,6 @@
 #include "SessionFactory.h"
 #include "SessionSettings.h"
 #include "Session.h"
-#include "ValidationRules.h"
 
 #include <memory>
 
@@ -198,17 +197,21 @@ Session* SessionFactory::create( const SessionID& sessionID,
   if ( settings.has( VALIDATE_LENGTH_AND_CHECKSUM ) )
     pSession->setValidateLengthAndChecksum( settings.getBool( VALIDATE_LENGTH_AND_CHECKSUM ) );
 
-  ValidationRules *vrptr = new ValidationRules;
   if ( settings.has( VALIDATE ) )
-    vrptr->setShouldValidate( settings.getBool( VALIDATE ) );
+    pSession->setShouldValidate( settings.getBool( VALIDATE ) );
+  if( settings.has( VALIDATE_FIELDS_OUT_OF_ORDER ) )
+    pSession->setValidateFieldsOutOfOrder( settings.getBool( VALIDATE_FIELDS_OUT_OF_ORDER ) );
+  if( settings.has( VALIDATE_FIELDS_HAVE_VALUES ) )
+    pSession->setValidateFieldsHaveValues( settings.getBool( VALIDATE_FIELDS_HAVE_VALUES ) );
+  if( settings.has( VALIDATE_USER_DEFINED_FIELDS ) )
+    pSession->setValidateUserDefinedFields( settings.getBool( VALIDATE_USER_DEFINED_FIELDS ) );
   if ( settings.has( VALIDATE_BOUNDS ) )
-    vrptr->setValidateBounds( settings.getBool( VALIDATE_BOUNDS ) );
+    pSession->setValidateBounds( settings.getBool( VALIDATE_BOUNDS ) );
   if ( settings.has( ALLOWED_FIELDS ) )
-    vrptr->setAllowedFields( settings.getString( ALLOWED_FIELDS ) );
+    pSession->setAllowedFields( settings.getString( ALLOWED_FIELDS ) );
   if ( settings.has( VALIDATION_RULES ) )
-    vrptr->setValidationRules( settings.getString( VALIDATION_RULES ) );
+    pSession->setValidationRules( settings.getString( VALIDATION_RULES ) );
 
-  pSession->setValidationRules( vrptr );
   pSession->doInitialTimestampCheck();
    
   return pSession.release();
@@ -237,13 +240,6 @@ ptr::shared_ptr<DataDictionary> SessionFactory::createDataDictionary(const Sessi
   }
 
   ptr::shared_ptr<DataDictionary> pCopyOfDD = ptr::shared_ptr<DataDictionary>(new DataDictionary(*pDD));
-
-  if( settings.has( VALIDATE_FIELDS_OUT_OF_ORDER ) )
-    pCopyOfDD->checkFieldsOutOfOrder( settings.getBool( VALIDATE_FIELDS_OUT_OF_ORDER ) );
-  if( settings.has( VALIDATE_FIELDS_HAVE_VALUES ) )
-    pCopyOfDD->checkFieldsHaveValues( settings.getBool( VALIDATE_FIELDS_HAVE_VALUES ) );
-  if( settings.has( VALIDATE_USER_DEFINED_FIELDS ) )
-    pCopyOfDD->checkUserDefinedFields( settings.getBool( VALIDATE_USER_DEFINED_FIELDS ) );
 
   return pCopyOfDD;
 }

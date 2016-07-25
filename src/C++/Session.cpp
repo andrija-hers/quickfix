@@ -61,8 +61,7 @@ Session::Session( Application& application,
   m_refreshOnLogon( false ),
   m_millisecondsInTimeStamp( true ),
   m_persistMessages( true ),
-  m_validateLengthAndChecksum( true ),
-  m_validationRules( NULL ),
+  m_validationRules( ),
   m_dataDictionaryProvider( dataDictionaryProvider ),
   m_messageStoreFactory( messageStoreFactory ),
   m_pLogFactory( pLogFactory ),
@@ -85,8 +84,6 @@ Session::~Session()
   m_messageStoreFactory.destroy( m_state.store() );
   if ( m_pLogFactory && m_state.log() )
     m_pLogFactory->destroy( m_state.log() );
-  delete m_validationRules;
-  m_validationRules = NULL;
 }
 
 void Session::doInitialTimestampCheck() {
@@ -346,7 +343,7 @@ void Session::nextSequenceReset( const Message& sequenceReset, const UtcTimeStam
     if ( newSeqNo > getExpectedTargetNum() )
       m_state.setNextTargetMsgSeqNum( MsgSeqNum( newSeqNo ) );
     else if ( newSeqNo < getExpectedTargetNum() )
-      generateReject( sequenceReset, SessionRejectReason_VALUE_IS_INCORRECT );
+      generateReject( OUTGOING_DIRECTION, sequenceReset, SessionRejectReason_VALUE_IS_INCORRECT );
   }
 }
 
@@ -406,11 +403,11 @@ void Session::nextResendRequest( const Message& resendRequest, const UtcTimeStam
 
       const DataDictionary& applicationDD =
         m_dataDictionaryProvider.getApplicationDataDictionary(applVerID);
-      msg = Message( *i, sessionDD, applicationDD, m_validateLengthAndChecksum );
+      msg = Message( *i, sessionDD, applicationDD, &m_validationRules );
     }
     else
     {
-      msg = Message( *i, sessionDD, m_validateLengthAndChecksum );
+      msg = Message( *i, sessionDD, &m_validationRules );
     }
 
 
@@ -435,7 +432,11 @@ void Session::nextResendRequest( const Message& resendRequest, const UtcTimeStam
         begin = 0;
       }
       else
-      { if ( !begin ) begin = msgSeqNum; }
+      { 
+        m_state.onEvent( "Resend Failed: "
+                         + IntConvertor::convert( msgSeqNum ) );
+        if ( !begin ) begin = msgSeqNum;
+      }
     }
     current = msgSeqNum + 1;
   }
@@ -468,15 +469,42 @@ bool Session::send( Message& message )
 Message* Session::messageFromString( const std::string& string )
 throw( FIX::Exception )
 {
+  Message *msg = NULL;
+  std::cout << "messageFromString " << string << std::endl;
+  try {
   if( m_sessionID.isFIXT() ) 
-    return new Message( string,
+    msg = new Message( string,
       m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString()),
       m_dataDictionaryProvider.getApplicationDataDictionary(m_targetDefaultApplVerID),
-      true );
+      &m_validationRules );
   else
-    return new Message( string,
+    msg = new Message( string,
       m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString()),
-      true );
+      &m_validationRules );
+  if (msg ) 
+  {
+    const DataDictionary& sessionDataDictionary = 
+        m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString());
+    if( m_sessionID.isFIXT() && msg->isApp() )
+    {
+      ApplVerID applVerID = m_targetDefaultApplVerID;
+      msg->getHeader().getFieldIfSet(applVerID);
+      const DataDictionary& applicationDataDictionary = 
+        m_dataDictionaryProvider.getApplicationDataDictionary(applVerID);
+      DataDictionary::validate( *msg, &sessionDataDictionary, &applicationDataDictionary, 0 );
+    }
+    else
+    {
+      sessionDataDictionary.validate( *msg, &m_validationRules );
+    }
+  }
+  return msg;
+  }
+  catch (Exception &e) {
+    std::cout << "Exception in messageFromString " << e.what() << std::endl;
+    m_state.onIncomingRejected( string, e.what() );
+    throw e;
+  }
 }
 
 bool Session::sendRaw( Message& message, int num )
@@ -745,20 +773,25 @@ void Session::generateTestRequest( const std::string& id )
   sendRaw( testRequest );
 }
 
-void Session::generateReject( const Message& message, int err, int field )
+void Session::generateReject( int direction, const Message& message, int err, int field )
+{
+  generateReject( direction, message.getHeader(), message.toString(), err, field );
+}
+
+void Session::generateReject( int direction, const Header& header, const std::string& messagetext, int err, int field )
 {
   std::string beginString = m_sessionID.getBeginString();
 
   Message reject;
   reject.getHeader().setField( MsgType( "3" ) );
-  reject.reverseRoute( message.getHeader() );
+  reject.reverseRoute( header );
   fill( reject.getHeader() );
 
   MsgSeqNum msgSeqNum;
   MsgType msgType;
 
-  message.getHeader().getField( msgType );
-  if( message.getHeader().getFieldIfSet( msgSeqNum ) )
+  header.getField( msgType );
+  if( header.getFieldIfSet( msgSeqNum ) )
   {
     if( msgSeqNum.getString() != "" )
       reject.setField( RefSeqNum( msgSeqNum ) );
@@ -817,43 +850,76 @@ void Session::generateReject( const Message& message, int err, int field )
     break;
     case SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP:
     reason = SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP_TEXT;
+    break;
+    case SessionRejectReason_INVALID_MESSAGE:
+    reason = SessionRejectReason_INVALID_MESSAGE_TEXT;
+    break;
   };
+
+  std::cout << "generateReject direction " << direction << " for field " << field << ", err " << err << " => " << reason << std::endl;
 
   if ( reason && ( field || err == SessionRejectReason_INVALID_TAG_NUMBER ) )
   {
     populateRejectReason( reject, field, reason );
     m_state.onEvent( "Message " + msgSeqNum.getString() + " Rejected: "
                      + reason + ":" + IntConvertor::convert( field ) );
+    if ( direction == OUTGOING_DIRECTION )
+    {
+      std::cout << "onOutgoingRejected" << std::endl;
+      m_state.onOutgoingRejected( messagetext, reason );
+    }
+    if ( direction == INCOMING_DIRECTION ) 
+    {
+      std::cout << "onIncomingRejected" << std::endl;
+      m_state.onIncomingRejected( messagetext, reason );
+    }
+    std::cout << "Rejected log populated with " << reason << std::endl;
   }
   else if ( reason )
   {
     populateRejectReason( reject, reason );
     m_state.onEvent( "Message " + msgSeqNum.getString()
          + " Rejected: " + reason );
+    if ( direction == OUTGOING_DIRECTION )
+      m_state.onOutgoingRejected( messagetext, reason );
+    if ( direction == INCOMING_DIRECTION ) 
+      m_state.onIncomingRejected( messagetext, reason );
   }
   else
+  {
     m_state.onEvent( "Message " + msgSeqNum.getString() + " Rejected" );
+    if ( direction == OUTGOING_DIRECTION )
+      m_state.onOutgoingRejected( messagetext, "Rejected" );
+    if ( direction == INCOMING_DIRECTION ) 
+      m_state.onIncomingRejected( messagetext, "Rejected" );
+  }
 
   if ( !m_state.receivedLogon() )
     throw std::runtime_error( "Tried to send a reject while not logged on" );
 
-  sendRaw( reject );
+  if ( direction == INCOMING_DIRECTION )
+    sendRaw( reject );
 }
 
-void Session::generateReject( const Message& message, const std::string& str )
+void Session::generateReject( int direction, const Message& message, const std::string& str )
+{
+  generateReject( direction, message.getHeader(), str );
+}
+
+void Session::generateReject( int direction, const Header& header, const std::string& str )
 {
   std::string beginString = m_sessionID.getBeginString();
 
   Message reject;
   reject.getHeader().setField( MsgType( "3" ) );
-  reject.reverseRoute( message.getHeader() );
+  reject.reverseRoute( header );
   fill( reject.getHeader() );
 
   MsgType msgType;
   MsgSeqNum msgSeqNum;
 
-  message.getHeader().getField( msgType );
-  message.getHeader().getField( msgSeqNum );
+  header.getField( msgType );
+  header.getField( msgSeqNum );
   if ( beginString >= FIX::BeginString_FIX42 )
     reject.setField( RefMsgType( msgType ) );
   reject.setField( RefSeqNum( msgSeqNum ) );
@@ -867,7 +933,7 @@ void Session::generateReject( const Message& message, const std::string& str )
                    + " Rejected: " + str );
 }
 
-void Session::generateBusinessReject( const Message& message, int err, int field )
+void Session::generateBusinessReject( int direction, const Message& message, int err, int field )
 {
   Message reject;
   reject.getHeader().setField( MsgType( MsgType_BusinessMessageReject ) );
@@ -917,15 +983,30 @@ void Session::generateBusinessReject( const Message& message, int err, int field
     populateRejectReason( reject, field, reason );
     m_state.onEvent( "Message " + msgSeqNum.getString() + " Rejected: "
                      + reason + ":" + IntConvertor::convert( field ) );
+    if ( direction == OUTGOING_DIRECTION )
+      m_state.onOutgoingRejected( message.toString(), reason );
+    if ( direction == INCOMING_DIRECTION ) 
+      m_state.onIncomingRejected( message.toString(), reason );
+
   }
   else if ( reason )
   {
     populateRejectReason( reject, reason );
     m_state.onEvent( "Message " + msgSeqNum.getString()
          + " Rejected: " + reason );
+    if ( direction == OUTGOING_DIRECTION )
+      m_state.onOutgoingRejected( message.toString(), reason );
+    if ( direction == INCOMING_DIRECTION ) 
+      m_state.onIncomingRejected( message.toString(), reason );
   }
   else
+  {
     m_state.onEvent( "Message " + msgSeqNum.getString() + " Rejected" );
+    if ( direction == OUTGOING_DIRECTION )
+      m_state.onOutgoingRejected( message.toString(), "rejected" );
+    if ( direction == INCOMING_DIRECTION ) 
+      m_state.onIncomingRejected( message.toString(), "rejected" );
+  }
 
   sendRaw( reject );
 }
@@ -1104,13 +1185,13 @@ void Session::fromCallback( const MsgType& msgType, const Message& msg,
 
 void Session::doBadTime( const Message& msg )
 {
-  generateReject( msg, SessionRejectReason_SENDINGTIME_ACCURACY_PROBLEM );
+  generateReject( OUTGOING_DIRECTION, msg, SessionRejectReason_SENDINGTIME_ACCURACY_PROBLEM );
   generateLogout();
 }
 
 void Session::doBadCompID( const Message& msg )
 {
-  generateReject( msg, SessionRejectReason_COMPID_PROBLEM );
+  generateReject( OUTGOING_DIRECTION, msg, SessionRejectReason_COMPID_PROBLEM );
   generateLogout();
 }
 
@@ -1128,13 +1209,13 @@ bool Session::doPossDup( const Message& msg )
   {
     if ( !header.getFieldIfSet( origSendingTime ) )
     {
-      generateReject( msg, SessionRejectReason_REQUIRED_TAG_MISSING, origSendingTime.getTag() );
+      generateReject( OUTGOING_DIRECTION, msg, SessionRejectReason_REQUIRED_TAG_MISSING, origSendingTime.getTag() );
       return false;
     }
 
     if ( origSendingTime > sendingTime )
     {
-      generateReject( msg, SessionRejectReason_SENDINGTIME_ACCURACY_PROBLEM );
+      generateReject( OUTGOING_DIRECTION, msg, SessionRejectReason_SENDINGTIME_ACCURACY_PROBLEM );
       generateLogout();
       return false;
     }
@@ -1216,15 +1297,16 @@ bool Session::nextQueued( int num, const UtcTimeStamp& timeStamp )
     }
     else
     {
-      next( msg, timeStamp, true );
+      next( msg, timeStamp, INCOMING_DIRECTION, true );
     }
     return true;
   }
   return false;
 }
 
-void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, bool queued )
+void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, int direction, bool queued )
 {
+  //std::cout << "string next " << msg << " direction " << direction << std::endl;
   try
   {
     m_state.onIncoming( msg );
@@ -1234,31 +1316,86 @@ void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, bool 
     {
       const DataDictionary& applicationDD =
         m_dataDictionaryProvider.getApplicationDataDictionary(m_senderDefaultApplVerID);
-      next( Message( msg, sessionDD, applicationDD, m_validateLengthAndChecksum ), timeStamp, queued );
+      next( Message( msg, sessionDD, applicationDD, &m_validationRules ), timeStamp, direction, queued );
     }
     else
     {
-      next( Message( msg, sessionDD, m_validateLengthAndChecksum ), timeStamp, queued );
+      next( Message( msg, sessionDD, &m_validationRules ), timeStamp, direction, queued );
     }
   }
-  catch( InvalidMessage& e )
+  catch ( InvalidTagNumber & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INVALID_TAG_NUMBER, e.field ) ); }
+  catch ( NoTagValue & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_SPECIFIED_WITHOUT_A_VALUE, e.field ) ); }
+  catch ( TagNotDefinedForMessage & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_NOT_DEFINED_FOR_THIS_MESSAGE_TYPE, e.field ) ); }
+  catch ( InvalidMessageType& )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INVALID_MSGTYPE ) ); }
+  /*
+  catch ( UnsupportedMessageType& )
+  {
+    if ( header.getField(FIELD::BeginString) >= FIX::BeginString_FIX42 )
+      { LOGEX( generateBusinessReject( direction, Header(), msg, BusinessRejectReason_UNKNOWN_MESSAGE_TYPE ) ); }
+    else
+      { LOGEX( generateReject( direction, Header(), msg, "Unsupported message type" ) ); }
+  }
+  */
+  catch ( TagOutOfOrder & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER, e.field ) ); }
+  catch ( IncorrectDataFormat & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE, e.field ) ); }
+  catch ( IncorrectTagValue & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_VALUE_IS_INCORRECT, e.field ) ); }
+  catch ( RepeatedTag & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE, e.field ) ); }
+  catch ( RepeatingGroupCountMismatch & e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP, e.field ) ); }
+  catch ( InvalidMessage& e )
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INVALID_MESSAGE, 0 ) ); }
+  //{ m_state.onEvent( e.what() ); }
+  catch ( RejectLogon& e )
   {
     m_state.onEvent( e.what() );
+    generateLogout( e.what() );
+    disconnect();
+  }
+  /*
+  catch ( UnsupportedVersion& )
+  {
+    if ( header.getField(FIELD::MsgType) == MsgType_Logout )
+      nextLogout( message, timeStamp );
+    else
+    {
+      generateLogout( "Incorrect BeginString" );
+      m_state.incrNextTargetMsgSeqNum();
+    }
+  }
+  */
+  /*
+  catch( InvalidMessage& e )
+  {
+    //m_state.onEvent( e.what() );
+    std::cout << "catch InvalidMessage in next on string " << msg << ", identifyType " << identifyType(msg) << std::endl;
 
     try
     {
       if( identifyType(msg) == MsgType_Logon )
       {
+        m_state.onEvent( e.what() );
         m_state.onEvent( "Logon message is not valid" );
         disconnect();
+      } else {
+        LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INVALID_MESSAGE, 0 ) );
       }
     } catch( MessageParseError& ) {}
     throw e;
   }
+  */
 }
 
-void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool queued )
+void Session::next( const Message& message, const UtcTimeStamp& timeStamp, int direction, bool queued )
 {
+  //std::cout << "Message next " << message.toString() << " direction " << direction << std::endl;
   const Header& header = message.getHeader();
 
   try
@@ -1301,7 +1438,7 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
     }
     else
     {
-      sessionDataDictionary.validate( message, m_validationRules );
+      sessionDataDictionary.validate( message, &m_validationRules );
     }
 
     if ( msgType == MsgType_Logon )
@@ -1327,16 +1464,16 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
   catch ( MessageParseError& e )
   { m_state.onEvent( e.what() ); }
   catch ( RequiredTagMissing & e )
-  { LOGEX( generateReject( message, SessionRejectReason_REQUIRED_TAG_MISSING, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_REQUIRED_TAG_MISSING, e.field ) ); }
   catch ( FieldNotFound & e )
   {
     if( header.getField(FIELD::BeginString) >= FIX::BeginString_FIX42 && message.isApp() )
     {
-      LOGEX( generateBusinessReject( message, BusinessRejectReason_CONDITIONALLY_REQUIRED_FIELD_MISSING, e.field ) );
+      LOGEX( generateBusinessReject( direction, message, BusinessRejectReason_CONDITIONALLY_REQUIRED_FIELD_MISSING, e.field ) );
     }
     else
     {
-      LOGEX( generateReject( message, SessionRejectReason_REQUIRED_TAG_MISSING, e.field ) );
+      LOGEX( generateReject( direction, message, SessionRejectReason_REQUIRED_TAG_MISSING, e.field ) );
       if ( header.getField(FIELD::MsgType) == MsgType_Logon )
       {
         m_state.onEvent( "Required field missing from logon" );
@@ -1345,32 +1482,33 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
     }
   }
   catch ( InvalidTagNumber & e )
-  { LOGEX( generateReject( message, SessionRejectReason_INVALID_TAG_NUMBER, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_INVALID_TAG_NUMBER, e.field ) ); }
   catch ( NoTagValue & e )
-  { LOGEX( generateReject( message, SessionRejectReason_TAG_SPECIFIED_WITHOUT_A_VALUE, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_TAG_SPECIFIED_WITHOUT_A_VALUE, e.field ) ); }
   catch ( TagNotDefinedForMessage & e )
-  { LOGEX( generateReject( message, SessionRejectReason_TAG_NOT_DEFINED_FOR_THIS_MESSAGE_TYPE, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_TAG_NOT_DEFINED_FOR_THIS_MESSAGE_TYPE, e.field ) ); }
   catch ( InvalidMessageType& )
-  { LOGEX( generateReject( message, SessionRejectReason_INVALID_MSGTYPE ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_INVALID_MSGTYPE ) ); }
   catch ( UnsupportedMessageType& )
   {
     if ( header.getField(FIELD::BeginString) >= FIX::BeginString_FIX42 )
-      { LOGEX( generateBusinessReject( message, BusinessRejectReason_UNKNOWN_MESSAGE_TYPE ) ); }
+      { LOGEX( generateBusinessReject( direction, message, BusinessRejectReason_UNKNOWN_MESSAGE_TYPE ) ); }
     else
-      { LOGEX( generateReject( message, "Unsupported message type" ) ); }
+      { LOGEX( generateReject( direction, message, "Unsupported message type" ) ); }
   }
   catch ( TagOutOfOrder & e )
-  { LOGEX( generateReject( message, SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER, e.field ) ); }
   catch ( IncorrectDataFormat & e )
-  { LOGEX( generateReject( message, SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE, e.field ) ); }
   catch ( IncorrectTagValue & e )
-  { LOGEX( generateReject( message, SessionRejectReason_VALUE_IS_INCORRECT, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_VALUE_IS_INCORRECT, e.field ) ); }
   catch ( RepeatedTag & e )
-  { LOGEX( generateReject( message, SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE, e.field ) ); }
   catch ( RepeatingGroupCountMismatch & e )
-  { LOGEX( generateReject( message, SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP, e.field ) ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP, e.field ) ); }
   catch ( InvalidMessage& e )
-  { m_state.onEvent( e.what() ); }
+  { LOGEX( generateReject( direction, message, SessionRejectReason_INVALID_MESSAGE, 0 ) ); }
+  //{ m_state.onEvent( e.what() ); }
   catch ( RejectLogon& e )
   {
     m_state.onEvent( e.what() );

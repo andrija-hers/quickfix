@@ -35,8 +35,11 @@
 #include <vector>
 #include <memory>
 
+
 namespace FIX
 {
+class ValidationRules;
+
 static int const headerOrder[] =
   {
     FIELD::BeginString,
@@ -75,18 +78,18 @@ public:
   Message();
 
   /// Construct a message from a string
-  Message( const std::string& string, bool validate = true )
-  throw( InvalidMessage );
+  Message( const std::string& string, const ValidationRules *validationRules = NULL )
+  throw( Exception );
 
   /// Construct a message from a string using a data dictionary
   Message( const std::string& string, const FIX::DataDictionary& dataDictionary,
-           bool validate = true )
-  throw( InvalidMessage );
+           const ValidationRules* validationRules )
+  throw( Exception );
 
   /// Construct a message from a string using a session and application data dictionary
   Message( const std::string& string, const FIX::DataDictionary& sessionDataDictionary,
-           const FIX::DataDictionary& applicationDataDictionary, bool validate = true )
-  throw( InvalidMessage );
+           const FIX::DataDictionary& applicationDataDictionary, const ValidationRules* validationRules )
+  throw( Exception );
 
   Message( const Message& copy )
   : FieldMap( copy )
@@ -160,22 +163,22 @@ public:
    * on failure.
    */
   void setString( const std::string& string )
-  throw( InvalidMessage )
-  { setString(string, true); }
-  void setString( const std::string& string, bool validate )
-  throw( InvalidMessage )
-  { setString(string, validate, 0); }
+  throw( Exception )
+  { setString(string); }
+  void setString( const std::string& string, const ValidationRules* validationRules )
+  throw( Exception )
+  { setString(string, validationRules, 0); }
   void setString( const std::string& string,
-                  bool validate,
+                  const ValidationRules *validationRules,
                   const FIX::DataDictionary* pDataDictionary )
-  throw( InvalidMessage )
-  { setString(string, validate, pDataDictionary, pDataDictionary); }
+  throw( Exception )
+  { setString(string, validationRules, pDataDictionary, pDataDictionary); }
 
   void setString( const std::string& string,
-                  bool validate,
+                  const ValidationRules *validationRules,
                   const FIX::DataDictionary* pSessionDataDictionary,
                   const FIX::DataDictionary* pApplicationDataDictionary )
-  throw( InvalidMessage );
+  throw( Exception );
 
   void setGroup( const std::string& msg, const FieldBase& field,
                  const std::string& string, std::string::size_type& pos,
@@ -331,7 +334,7 @@ private:
     return false;
   }
 
-  void validate();
+  void validate( const ValidationRules* vrptr );
   std::string toXMLFields(const FieldMap& fields, int space) const;
 
 protected:

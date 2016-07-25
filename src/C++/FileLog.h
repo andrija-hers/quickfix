@@ -83,6 +83,10 @@ public:
   { m_messages << UtcTimeStampConvertor::convert(UtcTimeStamp(), m_millisecondsInTimeStamp) << " received: " << value << std::endl; }
   void onOutgoing( const std::string& value )
   { m_messages << UtcTimeStampConvertor::convert(UtcTimeStamp(), m_millisecondsInTimeStamp) << " sent: " << value << std::endl; }
+  void onIncomingRejected( const std::string& value, const std::string& reason )
+  { m_rejects << UtcTimeStampConvertor::convert(UtcTimeStamp(), m_millisecondsInTimeStamp) << ": " << reason << " on incoming: " << value << std::endl; }
+  void onOutgoingRejected( const std::string& value, const std::string& reason )
+  { m_rejects << UtcTimeStampConvertor::convert(UtcTimeStamp(), m_millisecondsInTimeStamp) << ": " << reason << " on outgoing: " << value << std::endl; }
   void onEvent( const std::string& value )
   {
     UtcTimeStamp now;
@@ -100,8 +104,10 @@ private:
   void init( std::string path, std::string backupPath, const std::string& prefix );
 
   std::ofstream m_messages;
+  std::ofstream m_rejects;
   std::ofstream m_event;
   std::string m_messagesFileName;
+  std::string m_rejectsFileName;
   std::string m_eventFileName;
   std::string m_fullPrefix;
   std::string m_fullBackupPrefix;

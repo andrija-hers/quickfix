@@ -39,22 +39,19 @@
 namespace FIX
 {
 DataDictionary::DataDictionary()
-: m_hasVersion( false ), m_checkFieldsOutOfOrder( true ),
-  m_checkFieldsHaveValues( true ), m_checkUserDefinedFields( true )
+: m_hasVersion( false )
 {}
 
 DataDictionary::DataDictionary( std::istream& stream )
 throw( ConfigError )
-: m_hasVersion( false ), m_checkFieldsOutOfOrder( true ),
-  m_checkFieldsHaveValues( true ), m_checkUserDefinedFields( true )
+: m_hasVersion( false )
 {
   readFromStream( stream );
 }
 
 DataDictionary::DataDictionary( const std::string& url )
 throw( ConfigError )
-: m_hasVersion( false ), m_checkFieldsOutOfOrder( true ),
-  m_checkFieldsHaveValues( true ), m_checkUserDefinedFields( true ),
+: m_hasVersion( false ),
   m_orderedFieldsArray(0)
 {
   readFromURL( url );
@@ -81,9 +78,6 @@ DataDictionary::~DataDictionary()
 DataDictionary& DataDictionary::operator=( const DataDictionary& rhs )
 {
   m_hasVersion = rhs.m_hasVersion;
-  m_checkFieldsOutOfOrder = rhs.m_checkFieldsOutOfOrder;
-  m_checkFieldsHaveValues = rhs.m_checkFieldsHaveValues;
-  m_checkUserDefinedFields = rhs.m_checkUserDefinedFields;
   m_beginString = rhs.m_beginString;
   m_messageFields = rhs.m_messageFields;
   m_requiredFields = rhs.m_requiredFields;
@@ -120,7 +114,7 @@ void DataDictionary::validate( const Message& message,
                                const ValidationRules* vrptr )
 throw( FIX::Exception )
 {  
-  if ( vrptr && ! vrptr->shouldValidate() )
+  if ( ValidationRules::shouldValidate(vrptr) ) 
     return;
   const Header& header = message.getHeader();
   const BeginString& beginString = FIELD_GET_REF( header, BeginString );
@@ -134,12 +128,8 @@ throw( FIX::Exception )
   }
 
   int field = 0;
-  if( (pSessionDD !=0 && pSessionDD->m_checkFieldsOutOfOrder) || 
-      (pAppDD != 0 && pAppDD->m_checkFieldsOutOfOrder) )
-  {
-    if ( !message.hasValidStructure(field) )
-      throw TagOutOfOrder(field);
-  }
+  if ( ValidationRules::shouldValidateFieldsOutOfOrder( vrptr ) && !message.hasValidStructure(field) )
+    throw TagOutOfOrder(field);
 
   if ( pAppDD != 0 && pAppDD->m_hasVersion )
   {
@@ -161,7 +151,7 @@ throw( FIX::Exception )
 
 void DataDictionary::iterate( const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr ) const
 {
-  if ( vrptr && ! vrptr->shouldValidate() )
+  if ( ValidationRules::shouldValidate(vrptr) ) 
     return;
   int lastField = 0;
 

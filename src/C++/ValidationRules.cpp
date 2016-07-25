@@ -73,6 +73,85 @@ namespace FIX
 {
 const std::string ValidationRules::AnyMsgType = "?";
 
+bool ValidationRules::shouldValidate( const ValidationRules* vr)
+{
+  if ( !vr ) return true;
+  return vr->shouldValidate();
+}
+
+bool ValidationRules::shouldValidateFieldsOutOfOrder( const ValidationRules* vr)
+{
+  if( !ValidationRules::shouldValidate(vr) ) 
+    return false;
+  if( !vr )
+    return true;
+  return vr->shouldValidateFieldsOutOfOrder();
+}
+
+bool ValidationRules::shouldValidateLength( const ValidationRules* vr ) 
+{
+  if( !ValidationRules::shouldValidate(vr) ) 
+    return false;
+  if( !vr )
+    return true;
+  return vr->shouldValidateLength();
+}
+
+bool ValidationRules::shouldValidateChecksum( const ValidationRules* vr ) 
+{
+  if( !ValidationRules::shouldValidate(vr) ) 
+    return false;
+  if( !vr )
+    return true;
+  return vr->shouldValidateChecksum();
+}
+
+bool ValidationRules::shouldCheckTag( const ValidationRules* vr, const FieldBase& field )
+{
+  if( !ValidationRules::shouldValidate(vr) ) 
+    return false;
+  if ( !vr ) 
+    return true;
+  return vr->shouldCheckTag( field );
+}
+
+bool ValidationRules::shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, int tag )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr )
+    return false;
+  return vr->shouldTolerateMissingTag( msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr )
+    return false;
+  return vr->shouldTolerateMissingTag( msgType, field );
+}
+
+
+bool ValidationRules::shouldTolerateTagValue ( const ValidationRules* vr, const FieldBase& field )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr ) 
+    return false;
+  return vr->shouldTolerateTagValue( field );
+}
+
+bool ValidationRules::shouldAllowTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr ) 
+    return false;
+  return vr->shouldAllowTag( msgType, field );
+}
+
 ValidationRules::ValidationRules ()
 : m_validate(true),
 m_validateBounds(true),
@@ -106,6 +185,32 @@ void ValidationRules::setValidationRules ( const std::string& validationrulesstr
   split( validationrulesstr, ",", std::bind( &ValidationRules::addValidationRule, this, std::placeholders::_1 ) );
 }
 
+void ValidationRules::setValidateLength ( bool validatelength)
+{
+  m_validateLength = validatelength;
+}
+
+void ValidationRules::setValidateChecksum ( bool validatechecksum)
+{
+  m_validateChecksum = validatechecksum;
+}
+
+void ValidationRules::setValidateFieldsOutOfOrder ( bool validatefieldsoutoforder )
+{
+  m_validateFieldsOutOfOrder = validatefieldsoutoforder;
+}
+
+void ValidationRules::setValidateFieldsHaveValues ( bool validatefieldshavevalues )
+{
+  m_validateFieldsHaveValues = validatefieldshavevalues;
+}
+
+void ValidationRules::setValidateUserDefinedFields ( bool validateuserdefinedfields )
+{
+  m_validateUserDefinedFields = validateuserdefinedfields;
+}
+
+
 bool ValidationRules::shouldValidate ( ) const
 {
   return m_validate;
@@ -136,6 +241,31 @@ bool ValidationRules::shouldTolerateTagValue ( const FieldBase& field ) const
 bool ValidationRules::shouldAllowTag (const std::string& msgType, const FieldBase& field) const
 {
   return mapHasValue( m_allowedFields, msgType, field.getTag() );
+}
+
+bool ValidationRules::shouldValidateLength ( ) const 
+{
+  return m_validateLength;
+}
+
+bool ValidationRules::shouldValidateChecksum ( ) const
+{
+  return m_validateChecksum;
+}
+
+bool ValidationRules::shouldValidateFieldsOutOfOrder ( ) const
+{
+  return m_validateFieldsOutOfOrder;
+}
+
+bool ValidationRules::shouldValidateFieldsHaveValues ( ) const
+{
+  return m_validateFieldsHaveValues;
+}
+
+bool ValidationRules::shouldValidateUserDefinedFields ( ) const
+{
+  return m_validateUserDefinedFields;
 }
 
 void ValidationRules::addAllowedFieldGroup ( const std::string& afgstring )

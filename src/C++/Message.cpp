@@ -35,34 +35,34 @@ std::auto_ptr<DataDictionary> Message::s_dataDictionary;
 Message::Message()
 : m_validStructure( true ) {}
 
-Message::Message( const std::string& string, bool validate )
-throw( InvalidMessage )
+Message::Message( const std::string& string, const ValidationRules* validationRules )
+throw( Exception )
 : m_validStructure( true )
 {
-  setString( string, validate );
+  setString( string, validationRules );
 }
 
 Message::Message( const std::string& string,
                   const DataDictionary& dataDictionary,
-                  bool validate )
-throw( InvalidMessage )
+                  const ValidationRules* validationRules )
+throw( Exception )
 : m_validStructure( true )
 {
-  setString( string, validate, &dataDictionary, &dataDictionary );
+  setString( string, validationRules, &dataDictionary, NULL );
 }
 
 Message::Message( const std::string& string,
                   const DataDictionary& sessionDataDictionary,
                   const DataDictionary& applicationDataDictionary,
-                  bool validate )
-throw( InvalidMessage )
+                  const ValidationRules* validationRules )
+throw( Exception )
 : m_validStructure( true )
 {
   setStringHeader( string );
   if( isAdmin() )
-    setString( string, validate, &sessionDataDictionary, &sessionDataDictionary );
+    setString( string, validationRules, &sessionDataDictionary, NULL );
   else
-    setString( string, validate, &sessionDataDictionary, &applicationDataDictionary );
+    setString( string, validationRules, &sessionDataDictionary, &applicationDataDictionary );
 }
 
 bool Message::InitializeXML( const std::string& url )
@@ -263,10 +263,10 @@ std::string Message::toXMLFields(const FieldMap& fields, int space) const
 }
 
 void Message::setString( const std::string& string,
-                         bool doValidation,
+                         const ValidationRules *validationRules,
                          const DataDictionary* pSessionDataDictionary,
                          const DataDictionary* pApplicationDataDictionary )
-throw( InvalidMessage )
+throw( Exception )
 {
   clear();
 
@@ -286,8 +286,13 @@ throw( InvalidMessage )
   while ( pos < string.size() )
   {
     FieldBase field = extractField( string, pos, pSessionDataDictionary, pApplicationDataDictionary );
-    if ( count < 3 && headerOrder[ count++ ] != field.getTag() )
-      if ( doValidation ) throw InvalidMessage("Header fields out of order");
+    if ( ValidationRules::shouldValidateFieldsOutOfOrder(validationRules) &&
+         count < 3 &&
+         headerOrder[ count++ ] != field.getTag() )
+    {
+      //throw InvalidMessage("Header fields out of order.");
+      throw TagOutOfOrder( field.getTag() );
+    }
 
     if ( isHeaderField( field, pSessionDataDictionary ) )
     {
@@ -326,16 +331,12 @@ throw( InvalidMessage )
 
       if ( pApplicationDataDictionary )
       {
-        if (field.getTag() == 453) {
-          std::cout << "setGroup on 453 from " << string.substr(pos) << std::endl;
-        }
         setGroup( msg, field, string, pos, *this, *pApplicationDataDictionary );
       }
     }
   }
 
-  if ( doValidation )
-    validate();
+  validate( validationRules );
 }
 
 void Message::setGroup( const std::string& msg, const FieldBase& field,
@@ -354,9 +355,6 @@ void Message::setGroup( const std::string& msg, const FieldBase& field,
     std::string::size_type oldPos = pos;
     FieldBase field = extractField( string, pos, &dataDictionary, &dataDictionary, pGroup.get() );
        
-    if (group == 453) {
-      std::cout << "On 453 field " << field.getTag() << " from " << string.substr( oldPos ) << std::endl;
-    }
     // Start a new group because...
     if (// found delimiter
     (field.getTag() == delim) ||
@@ -494,35 +492,45 @@ void Message::setSessionID( const SessionID& sessionID )
   getHeader().setField( sessionID.getTargetCompID() );
 }
 
-void Message::validate()
+void Message::validate( const ValidationRules* vrptr )
 {
+  /*
   try
   {
-    const BodyLength& aBodyLength = FIELD_GET_REF( m_header, BodyLength );
-
-    const int expectedLength = (int)aBodyLength;
-    const int actualLength = bodyLength();
-
-    if ( expectedLength != actualLength )
+    */
+    if ( !ValidationRules::shouldValidate( vrptr ) ) return;
+    if ( ValidationRules::shouldValidateLength( vrptr ) )
     {
-      std::stringstream text;
-      text << "Expected BodyLength=" << actualLength
-           << ", Received BodyLength=" << expectedLength;
-      throw InvalidMessage(text.str());
+      const BodyLength& aBodyLength = FIELD_GET_REF( m_header, BodyLength );
+
+      const int expectedLength = (int)aBodyLength;
+      const int actualLength = bodyLength();
+
+      if ( expectedLength != actualLength )
+      {
+        std::stringstream text;
+        text << "Expected BodyLength=" << expectedLength
+             << ", Received BodyLength=" << actualLength;
+        throw InvalidMessage(text.str());
+      }
     }
 
-    const CheckSum& aCheckSum = FIELD_GET_REF( m_trailer, CheckSum );
-
-    const int expectedChecksum = (int)aCheckSum;
-    const int actualChecksum = checkSum();
-
-    if ( expectedChecksum != actualChecksum )
+    if ( ValidationRules::shouldValidateChecksum( vrptr ) ) 
     {
-      std::stringstream text;
-      text << "Expected CheckSum=" << actualChecksum
-           << ", Received CheckSum=" << expectedChecksum;
-      throw InvalidMessage(text.str());
+      const CheckSum& aCheckSum = FIELD_GET_REF( m_trailer, CheckSum );
+
+      const int expectedChecksum = (int)aCheckSum;
+      const int actualChecksum = checkSum();
+
+      if ( expectedChecksum != actualChecksum )
+      {
+        std::stringstream text;
+        text << "Expected CheckSum=" << expectedChecksum
+             << ", Received CheckSum=" << actualChecksum;
+        throw InvalidMessage(text.str());
+      }
     }
+  /*
   }
   catch ( FieldNotFound& e )
   {
@@ -534,6 +542,7 @@ void Message::validate()
     const std::string fieldName = ( e.field == FIX::FIELD::BodyLength ) ? "BodyLength" : "CheckSum";
     throw InvalidMessage( fieldName + std::string(" has wrong format: ") + e.detail );
   }
+  */
 }
 
 FIX::FieldBase Message::extractField( const std::string& string, std::string::size_type& pos, 

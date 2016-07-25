@@ -35,6 +35,7 @@ namespace FIX
   const char BeginString_FIX41[] = "FIX.4.1";
   const char BeginString_FIX40[] = "FIX.4.0";
 
+  const char SessionRejectReason_INVALID_MESSAGE_TEXT[] = "Message malformed";
   const char SessionRejectReason_INVALID_TAG_NUMBER_TEXT[] = "Invalid tag number";
   const char SessionRejectReason_REQUIRED_TAG_MISSING_TEXT[] = "Required tag missing";
   const char SessionRejectReason_TAG_NOT_DEFINED_FOR_THIS_MESSAGE_TYPE_TEXT[] = "Tag not defined for this message type";
@@ -58,5 +59,8 @@ namespace FIX
   const char BusinessRejectReason_CONDITIONALLY_REQUIRED_FIELD_MISSING_TEXT[] = "Conditionally Required Field Missing";
   const char BusinessRejectReason_NOT_AUTHORIZED_TEXT[] = "Not Authorized";
   const char BusinessRejectReason_DELIVERTO_FIRM_NOT_AVAILABLE_AT_THIS_TIME_TEXT[] = "Deliver to firm not available at this time";
+
+  const int INCOMING_DIRECTION = 1;
+  const int OUTGOING_DIRECTION = 2;
 }
 #endif //FIX_VALUES_BASE_H

@@ -168,7 +168,8 @@ TEST(setString)
   FIX::Message object;
   object.setString( strGood );
   object.setString( std::string(strNull, 68) );
-  object.setString( strNoLengthAndChk, false );
+  FIX::ValidationRules vr;
+  object.setString( strNoLengthAndChk, &vr );
 
   CHECK_THROW( object.setString( strTrailingCharacter ), InvalidMessage );
   CHECK_THROW( object.setString( strNoChk ), InvalidMessage );
@@ -188,7 +189,8 @@ TEST(setString)
   ClOrdID clOrdID;
   TransactTime transactTime;
   Symbol symbol;
-  object.setString( strBodyFields, true, &dataDictionary );
+  vr.setShouldValidate(true);
+  object.setString( strBodyFields, &vr, &dataDictionary );
 
   CHECK( object.getHeader().isSetField( clOrdID ) );
   CHECK( object.getTrailer().isSetField( transactTime ) );
@@ -198,6 +200,8 @@ TEST(setString)
 TEST(setStringWithGroup)
 {
   FIX::Message object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
   DataDictionary dataDictionary( "../spec/FIX43.xml" );
   static const char* str =
     "8=FIX.4.3\0019=199\00135=E\00134=126\00149=BUYSIDE\00150=00303\00152"
@@ -206,13 +210,15 @@ TEST(setStringWithGroup)
     "350460\00167=2\0011=00303\00155=fred\00154=1\00140=1\00159=3\001394=3\00110="
     "138\001";
 
-  object.setString( str, true, &dataDictionary );
+  object.setString( str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
 TEST(setStringWithGroupWithoutDelimiter)
 {
   FIX::Message object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
   DataDictionary dataDictionary( "../spec/FIX43.xml" );
   static const char* str =
     "8=FIX.4.3\0019=171\00135=E\00134=126\00149=BUYSIDE\00150=00303\00152"
@@ -221,13 +227,15 @@ TEST(setStringWithGroupWithoutDelimiter)
     "67=2\0011=00303\00155=fred\00154=1\00140=1\00159=3\001394=3\00110="
     "054\001";
 
-  object.setString( str, true, &dataDictionary );
+  object.setString( str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
 TEST(setStringWithHeaderGroup)
 {
   FIX::Message object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
   DataDictionary dataDictionary( "../spec/FIX43.xml" );
   static const char* str =
     "8=FIX.4.3\0019=152\00135=A\00134=125\00149=BUYSIDE\001"
@@ -236,13 +244,15 @@ TEST(setStringWithHeaderGroup)
     "628=HOP2\001629=20040916-16:19:18.328\001630=ID2\001"
     "10=079\001";
 
-  object.setString( str, true, &dataDictionary );
+  object.setString( str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
 TEST(setStringWithHighBit)
 {
   FIX::Message object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
   DataDictionary dataDictionary( "../spec/FIX42.xml" );
 
   FIX::Headline headline( "client" );
@@ -261,7 +271,7 @@ TEST(setStringWithHighBit)
   msg.set(data);
   std::string str = msg.toString();
 
-  object.setString( str, true, &dataDictionary );
+  object.setString( str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
@@ -294,6 +304,8 @@ TEST(copy)
 TEST(checkSum)
 {
   FIX::Message object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(false);
   const std::string str1 =
     "8=FIX.4.2\0019=46\00135=0\00134=3\00149=TW\001"
     "52=20000426-12:05:06\00156=ISLD\001";
@@ -307,18 +319,20 @@ TEST(checkSum)
 
   chksum %= 256;
 
-  object.setString( str2, false );
+  object.setString( str2, &vr );
   CHECK_EQUAL( chksum, object.checkSum() );
 }
 
 TEST(headerFieldsFirst)
 {
   FIX::Message object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(false);
   const std::string str =
     "8=FIX.4.2\0019=95\00135=D\00134=5\00149=ISLD\00155=INTC\001"
     "52=00000000-00:00:00\00156=TW\00111=ID\00121=3\001"
     "40=1\00154=1\00160=00000000-00:00:00\00110=000\001";
-  object.setString( str, false );
+  object.setString( str, &vr );
   int field = 0;
   CHECK( !object.hasValidStructure(field) );
   CHECK_EQUAL( 52, field );
@@ -337,6 +351,8 @@ TEST(noEndingDelim)
 TEST(outOfOrder)
 {
   FIX::Message object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(false);
   static const char * str =
     "54=1\00120=0\00131=109.03125\00160=00000000-00:00:00\001"
     "8=FIX.4.2\0016=109.03125\0011=acct1\001151=0\001150=2\001"
@@ -350,7 +366,7 @@ TEST(outOfOrder)
     "31=109.03125\00137=1\00138=3000\00139=2\00148=123ABC789\001"
     "54=1\00155=ABCD\00160=00000000-00:00:00\001150=2\001151=0\00110=225\001";
 
-  object.setString( str, false );
+  object.setString( str, &vr );
   CHECK_EQUAL( expected, object.toString() );
 }
 
@@ -1022,6 +1038,8 @@ TEST(newOrderListGetString)
 TEST(newOrderListSetString)
 {
   FIX42::NewOrderList object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
 
   DataDictionary dataDictionary( "../spec/FIX42.xml" );
   
@@ -1030,7 +1048,7 @@ TEST(newOrderListSetString)
       "11=A\00154=1\00155=DELL\00167=1\001"
       "11=B\00154=2\00155=LNUX\00167=2\001"
       "11=C\00154=3\00155=RHAT\00167=3\001"
-      "394=0\00110=233\001", true, &dataDictionary );
+      "394=0\00110=233\001", &vr, &dataDictionary );
 
   ListID listID;
   BidType bidType;
@@ -1081,7 +1099,7 @@ TEST(newOrderListSetString)
 
   object.setString
     ( "8=FIX.4.2\0019=26\00135=E\00166=1\00168=3\00173=0\001"
-      "394=0\00110=137\001", true, &dataDictionary );
+      "394=0\00110=137\001", &vr, &dataDictionary );
 }
 
 TEST(massQuoteParseGetString)
@@ -1105,13 +1123,15 @@ TEST(massQuoteParseGetString)
 TEST(massQuoteSetString)
 {
   MassQuote object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
 
   DataDictionary dataDictionary( "../spec/FIX42.xml" );
 
   object.setString
     ( "8=FIX.4.2\0019=54\00135=i\001117=1\001296=1\001302=A\001"
       "311=DELL\001364=10\001365=DELL\001COMP\001\00110=152\001",
-       true, &dataDictionary );
+       &vr, &dataDictionary );
 
   QuoteID quoteID;
 
@@ -1167,13 +1187,15 @@ TEST(newOrderCrossGetString)
 TEST(newOrderCrossSetString)
 {
   NewOrderCross object;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
 
   DataDictionary dataDictionary( "../spec/FIX44.xml" );
 
   object.setString
     ( "8=FIX.4.4\0019=75\00135=s\001552=1\00154=1\001453=2\001448=PARTY1\001"
       "447=D\001452=3\001448=PARTY2\001447=D\001452=3\00138=100\00110=223\001",
-       true, &dataDictionary );
+       &vr, &dataDictionary );
 
   FIX44::NewOrderCross::NoSides noSides;
   object.getGroup( 1, noSides );

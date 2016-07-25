@@ -35,6 +35,7 @@
 #include "Application.h"
 #include "Mutex.h"
 #include "Log.h"
+#include "ValidationRules.h"
 #include <utility>
 #include <map>
 #include <queue>
@@ -197,12 +198,23 @@ public:
     { m_persistMessages = value; }
 
   bool getValidateLengthAndChecksum()
-    { return m_validateLengthAndChecksum; }
+    { return m_validationRules.shouldValidateLength() && m_validationRules.shouldValidateChecksum(); }
   void setValidateLengthAndChecksum ( bool value )
-    { m_validateLengthAndChecksum = value; }
-
-  void setValidationRules ( ValidationRules* vrptr ) 
-    { m_validationRules = vrptr; }
+    { m_validationRules.setValidateLength( true ); m_validationRules.setValidateChecksum( true ); }
+  void setShouldValidate ( bool validate ) 
+    { m_validationRules.setShouldValidate( validate ); }
+  void setValidateFieldsOutOfOrder ( bool validatefieldsoutoforder )
+    { m_validationRules.setValidateFieldsOutOfOrder( validatefieldsoutoforder ); }
+  void setValidateFieldsHaveValues ( bool validatefieldshavevalues )
+    { m_validationRules.setValidateFieldsHaveValues( validatefieldshavevalues ); }
+  void setValidateUserDefinedFields ( bool validateuserdefinedfields ) 
+    { m_validationRules.setValidateUserDefinedFields( validateuserdefinedfields ); }
+  void setValidateBounds ( bool validatebounds ) 
+    { m_validationRules.setValidateBounds( validatebounds ) ; }
+  void setAllowedFields ( const std::string &allowedfieldstr ) 
+    { m_validationRules.setAllowedFields (allowedfieldstr); }
+  void setValidationRules ( const std::string &validationrules )
+    { m_validationRules.setValidationRules( validationrules ); }
 
   void setResponder( Responder* pR )
   {
@@ -215,8 +227,8 @@ public:
   throw( FIX::Exception );
   void next();
   void next( const UtcTimeStamp& timeStamp );
-  void next( const std::string&, const UtcTimeStamp& timeStamp, bool queued = false );
-  void next( const Message&, const UtcTimeStamp& timeStamp, bool queued = false );
+  void next( const std::string&, const UtcTimeStamp& timeStamp, int direction, bool queued = false );
+  void next( const Message&, const UtcTimeStamp& timeStamp, int direction, bool queued = false );
   void disconnect();
 
   int getExpectedSenderNum() { return m_state.getNextSenderMsgSeqNum(); }
@@ -232,6 +244,7 @@ private:
   static bool addSession( Session& );
   static void removeSession( Session& );
 
+  void doNextMessage( const Message&, const UtcTimeStamp& timeStamp, bool queued );
   bool send( const std::string& );
   bool sendRaw( Message&, int msgSeqNum = 0 );
   bool resend( Message& message );
@@ -300,9 +313,11 @@ private:
   void generateHeartbeat();
   void generateHeartbeat( const Message& );
   void generateTestRequest( const std::string& );
-  void generateReject( const Message&, int err, int field = 0 );
-  void generateReject( const Message&, const std::string& );
-  void generateBusinessReject( const Message&, int err, int field = 0 );
+  void generateReject( int direction, const Message&, int err, int field = 0 );
+  void generateReject( int direction, const Header&, const std::string& messagetext, int err, int field = 0 );
+  void generateReject( int direction, const Message&, const std::string& );
+  void generateReject( int direction, const Header&, const std::string& );
+  void generateBusinessReject( int direction, const Message&, int err, int field = 0 );
   void generateLogout( const std::string& text = "" );
 
   void populateRejectReason( Message&, int field, const std::string& );
@@ -333,8 +348,7 @@ private:
   bool m_refreshOnLogon;
   bool m_millisecondsInTimeStamp;
   bool m_persistMessages;
-  bool m_validateLengthAndChecksum;
-  ValidationRules* m_validationRules;
+  ValidationRules m_validationRules;
 
   SessionState m_state;
   DataDictionaryProvider m_dataDictionaryProvider;

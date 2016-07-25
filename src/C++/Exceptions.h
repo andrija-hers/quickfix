@@ -147,7 +147,7 @@ struct IncorrectTagValue : public Exception
 struct IncorrectDataFormat : public Exception
 {
   IncorrectDataFormat( int f = 0, const std::string& what = "" )
-    : Exception( "Incorrect data format for value", what, 1 ),
+    : Exception( "Incorrect data format for value", what, 0 ),
                  field( f ) {}
   int field;
 };

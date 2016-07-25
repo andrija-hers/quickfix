@@ -203,6 +203,10 @@ public:
   { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onIncoming( string ); }
   void onOutgoing( const std::string& string )
   { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onOutgoing( string ); }
+  void onIncomingRejected( const std::string& value, const std::string& reason )
+  { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onIncomingRejected( value, reason ); }
+  void onOutgoingRejected( const std::string& value, const std::string& reason )
+  { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onOutgoingRejected( value, reason ); }
   void onEvent( const std::string& string )
   { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onEvent( string ); }
 

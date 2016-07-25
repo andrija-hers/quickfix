@@ -159,7 +159,7 @@ void ThreadedSocketConnection::processStream()
     }
     try
     {
-      m_pSession->next( msg, UtcTimeStamp() );
+      m_pSession->next( msg, UtcTimeStamp(), INCOMING_DIRECTION );
     }
     catch( InvalidMessage& )
     {

@@ -32,6 +32,16 @@ class FieldBase;
 class ValidationRules
 {
   public:
+    static bool shouldValidate( const ValidationRules* vr );
+    static bool shouldValidateFieldsOutOfOrder( const ValidationRules* vr );
+    static bool shouldValidateLength( const ValidationRules* vr );
+    static bool shouldValidateChecksum( const ValidationRules* vr );
+    static bool shouldCheckTag( const ValidationRules* vr, const FieldBase& field );
+    static bool shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, int tag );
+    static bool shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field );
+    static bool shouldTolerateTagValue ( const ValidationRules* vr, const FieldBase& field );
+    static bool shouldAllowTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field );
+  public:
     ValidationRules();
     virtual ~ValidationRules();
 
@@ -39,6 +49,11 @@ class ValidationRules
     void setValidateBounds ( bool validatebounds );
     void setAllowedFields ( const std::string& allowedfieldstr );
     void setValidationRules ( const std::string& validationrulesstr );
+    void setValidateLength ( bool validatelength );
+    void setValidateChecksum (bool validatechecksum );
+    void setValidateFieldsOutOfOrder ( bool validatefieldsoutoforder );
+    void setValidateFieldsHaveValues ( bool validatefieldshavevalues );
+    void setValidateUserDefinedFields ( bool validateuserdefinedfields );
 
     bool shouldValidate ( ) const;
     bool shouldCheckTag ( const FieldBase& field ) const;
@@ -46,6 +61,11 @@ class ValidationRules
     bool shouldTolerateMissingTag ( const std::string& msgType, const FieldBase& field ) const;
     bool shouldTolerateTagValue ( const FieldBase& field ) const;
     bool shouldAllowTag ( const std::string& msgType, const FieldBase& field ) const;
+    bool shouldValidateLength ( ) const;
+    bool shouldValidateChecksum ( ) const;
+    bool shouldValidateFieldsOutOfOrder ( ) const;
+    bool shouldValidateFieldsHaveValues ( ) const;
+    bool shouldValidateUserDefinedFields ( ) const;
 
   private:
     static const std::string AnyMsgType;
@@ -53,6 +73,11 @@ class ValidationRules
     typedef std::map< std::string, MsgTypeValues > MsgTypeMap;
     bool m_validate;
     bool m_validateBounds;
+    bool m_validateLength;
+    bool m_validateChecksum;
+    bool m_validateFieldsOutOfOrder;
+    bool m_validateFieldsHaveValues;
+    bool m_validateUserDefinedFields;
     MsgTypeMap m_allowedFields;
     MsgTypeMap m_allowedEmptyFields;
     MsgTypeMap m_allowedMissingFields;

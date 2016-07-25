@@ -144,10 +144,13 @@ void FileLog::init( std::string path, std::string backupPath, const std::string&
     = file_appendpath(backupPath, prefix + ".");
 
   m_messagesFileName = m_fullPrefix + "messages.current.log";
+  m_rejectsFileName = m_fullPrefix + "rejects.current.log";
   m_eventFileName = m_fullPrefix + "event.current.log";
 
   m_messages.open( m_messagesFileName.c_str(), std::ios::out | std::ios::app );
   if ( !m_messages.is_open() ) throw ConfigError( "Could not open messages file: " + m_messagesFileName );
+  m_rejects.open( m_rejectsFileName.c_str(), std::ios::out | std::ios::app );
+  if ( !m_rejects.is_open() ) throw ConfigError( "Could not open rejects file: " + m_rejectsFileName );
   m_event.open( m_eventFileName.c_str(), std::ios::out | std::ios::app );
   if ( !m_event.is_open() ) throw ConfigError( "Could not open event file: " + m_eventFileName );
 }
@@ -155,44 +158,54 @@ void FileLog::init( std::string path, std::string backupPath, const std::string&
 FileLog::~FileLog()
 {
   m_messages.close();
+  m_rejects.close();
   m_event.close();
 }
 
 void FileLog::clear()
 {
   m_messages.close();
+  m_rejects.close();
   m_event.close();
 
   m_messages.open( m_messagesFileName.c_str(), std::ios::out | std::ios::trunc );
+  m_rejects.open( m_rejectsFileName.c_str(), std::ios::out | std::ios::trunc );
   m_event.open( m_eventFileName.c_str(), std::ios::out | std::ios::trunc );
 }
 
 void FileLog::backup()
 {
   m_messages.close();
+  m_rejects.close();
   m_event.close();
 
   int i = 0;
   while( true )
   {
     std::stringstream messagesFileName;
+    std::stringstream rejectsFileName;
     std::stringstream eventFileName;
  
     messagesFileName << m_fullBackupPrefix << "messages.backup." << ++i << ".log";
+    rejectsFileName << m_fullBackupPrefix << "rejects.backup." << ++i << ".log";
     eventFileName << m_fullBackupPrefix << "event.backup." << i << ".log";
     FILE* messagesLogFile = file_fopen( messagesFileName.str().c_str(), "r" );
+    FILE* rejectsLogFile = file_fopen( rejectsFileName.str().c_str(), "r" );
     FILE* eventLogFile = file_fopen( eventFileName.str().c_str(), "r" );
 
-    if( messagesLogFile == NULL && eventLogFile == NULL )
+    if( messagesLogFile == NULL && rejectsLogFile == NULL && eventLogFile == NULL )
     {
       file_rename( m_messagesFileName.c_str(), messagesFileName.str().c_str() );
+      file_rename( m_rejectsFileName.c_str(), rejectsFileName.str().c_str() );
       file_rename( m_eventFileName.c_str(), eventFileName.str().c_str() );
       m_messages.open( m_messagesFileName.c_str(), std::ios::out | std::ios::trunc );
+      m_rejects.open( m_rejectsFileName.c_str(), std::ios::out | std::ios::trunc );
       m_event.open( m_eventFileName.c_str(), std::ios::out | std::ios::trunc );
       return;
     }
     
     if( messagesLogFile != NULL ) file_fclose( messagesLogFile );
+    if( rejectsLogFile != NULL ) file_fclose( rejectsLogFile );
     if( eventLogFile != NULL ) file_fclose( eventLogFile );
   }
 }

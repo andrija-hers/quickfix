@@ -87,6 +87,8 @@ public:
   virtual void backup() = 0;
   virtual void onIncoming( const std::string& ) = 0;
   virtual void onOutgoing( const std::string& ) = 0;
+  virtual void onIncomingRejected( const std::string&, const std::string& ) = 0;
+  virtual void onOutgoingRejected( const std::string&, const std::string& ) = 0;
   virtual void onEvent( const std::string& ) = 0;
 };
 /*! @} */
@@ -104,6 +106,8 @@ public:
   void backup() {}
   void onIncoming( const std::string& ) {}
   void onOutgoing( const std::string& ) {}
+  virtual void onIncomingRejected( const std::string&, const std::string& ) {}
+  virtual void onOutgoingRejected( const std::string&, const std::string& ) {}
   void onEvent( const std::string& ) {}
 };
 
@@ -146,6 +150,28 @@ public:
     std::cout << "<" << UtcTimeStampConvertor::convert(m_time, m_millisecondsInTimeStamp)
               << ", " << m_prefix
               << ", " << "outgoing>" << std::endl
+              << "  (" << value << ")" << std::endl;
+  }
+
+  void onIncomingRejected( const std::string& value, const std::string& reason )
+  {
+    if ( !m_incoming ) return ;
+    Locker l( s_mutex );
+    m_time.setCurrent();
+    std::cout << "<" << UtcTimeStampConvertor::convert(m_time, m_millisecondsInTimeStamp)
+              << ", " << m_prefix
+              << ", " << "incoming " << reason << ">" << std::endl
+              << "  (" << value << ")" << std::endl;
+  }
+
+  void onOutgoingRejected( const std::string& value, const std::string& reason )
+  {
+    if ( !m_outgoing ) return ;
+    Locker l( s_mutex );
+    m_time.setCurrent();
+    std::cout << "<" << UtcTimeStampConvertor::convert(m_time, m_millisecondsInTimeStamp)
+              << ", " << m_prefix
+              << ", " << "outgoing " << reason << ">" << std::endl
               << "  (" << value << ")" << std::endl;
   }
 

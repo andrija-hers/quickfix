@@ -299,12 +299,14 @@ long testSerializeFromStringHeartbeat( int count )
 {
   FIX42::Heartbeat message;
   std::string string = message.toString();
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(false);
   count = count - 1;
 
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, DONT_VALIDATE, s_dataDictionary.get() );
+    message.setString( string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -312,13 +314,15 @@ long testSerializeFromStringHeartbeat( int count )
 long testSerializeFromStringAndValidateHeartbeat( int count )
 {
   FIX42::Heartbeat message;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
   std::string string = message.toString();
   count = count - 1;
 
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, VALIDATE, s_dataDictionary.get() );
+    message.setString( string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -372,13 +376,15 @@ long testSerializeFromStringNewOrderSingle( int count )
   FIX42::NewOrderSingle message
   ( clOrdID, handlInst, symbol, side, transactTime, ordType );
   std::string string = message.toString();
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(false);
 
   count = count - 1;
 
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, DONT_VALIDATE, s_dataDictionary.get() );
+    message.setString( string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -394,13 +400,15 @@ long testSerializeFromStringAndValidateNewOrderSingle( int count )
   FIX42::NewOrderSingle message
     ( clOrdID, handlInst, symbol, side, transactTime, ordType );
   std::string string = message.toString();
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
 
   count = count - 1;
 
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, VALIDATE, s_dataDictionary.get() );
+    message.setString( string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -482,6 +490,8 @@ long testSerializeFromStringQuoteRequest( int count )
 {
   FIX42::QuoteRequest message( FIX::QuoteReqID("1") );
   FIX42::QuoteRequest::NoRelatedSym noRelatedSym;
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(false);
 
   for( int i = 1; i <= 10; ++i )
   {
@@ -502,7 +512,7 @@ long testSerializeFromStringQuoteRequest( int count )
   long start = GetTickCount();
   for ( int j = 0; j <= count; ++j )
   {
-    message.setString( string, DONT_VALIDATE, s_dataDictionary.get() );
+    message.setString( string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -529,9 +539,11 @@ long testSerializeFromStringAndValidateQuoteRequest( int count )
   count = count - 1;
 
   long start = GetTickCount();
+  FIX::ValidationRules vr;
+  vr.setShouldValidate(true);
   for ( int j = 0; j <= count; ++j )
   {
-    message.setString( string, VALIDATE, s_dataDictionary.get() );
+    message.setString( string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
