@@ -470,7 +470,7 @@ Message* Session::messageFromString( const std::string& string )
 throw( FIX::Exception )
 {
   Message *msg = NULL;
-  std::cout << "messageFromString " << string << std::endl;
+  //std::cout << "messageFromString " << string << std::endl;
   try {
   if( m_sessionID.isFIXT() ) 
     msg = new Message( string,
@@ -501,7 +501,7 @@ throw( FIX::Exception )
   return msg;
   }
   catch (Exception &e) {
-    std::cout << "Exception in messageFromString " << e.what() << std::endl;
+    //std::cout << "Exception in messageFromString " << e.what() << std::endl;
     m_state.onIncomingRejected( string, e.what() );
     throw e;
   }
@@ -856,7 +856,7 @@ void Session::generateReject( int direction, const Header& header, const std::st
     break;
   };
 
-  std::cout << "generateReject direction " << direction << " for field " << field << ", err " << err << " => " << reason << std::endl;
+  //std::cout << "generateReject direction " << direction << " for field " << field << ", err " << err << " => " << reason << std::endl;
 
   if ( reason && ( field || err == SessionRejectReason_INVALID_TAG_NUMBER ) )
   {
@@ -865,15 +865,15 @@ void Session::generateReject( int direction, const Header& header, const std::st
                      + reason + ":" + IntConvertor::convert( field ) );
     if ( direction == OUTGOING_DIRECTION )
     {
-      std::cout << "onOutgoingRejected" << std::endl;
+      //std::cout << "onOutgoingRejected" << std::endl;
       m_state.onOutgoingRejected( messagetext, reason );
     }
     if ( direction == INCOMING_DIRECTION ) 
     {
-      std::cout << "onIncomingRejected" << std::endl;
+      //std::cout << "onIncomingRejected" << std::endl;
       m_state.onIncomingRejected( messagetext, reason );
     }
-    std::cout << "Rejected log populated with " << reason << std::endl;
+    //std::cout << "Rejected log populated with " << reason << std::endl;
   }
   else if ( reason )
   {

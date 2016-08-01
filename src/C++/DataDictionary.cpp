@@ -114,7 +114,7 @@ void DataDictionary::validate( const Message& message,
                                const ValidationRules* vrptr )
 throw( FIX::Exception )
 {  
-  if ( ValidationRules::shouldValidate(vrptr) ) 
+  if ( !ValidationRules::shouldValidate(vrptr) ) 
     return;
   const Header& header = message.getHeader();
   const BeginString& beginString = FIELD_GET_REF( header, BeginString );
