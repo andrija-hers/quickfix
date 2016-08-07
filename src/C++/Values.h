@@ -41,7 +41,7 @@ namespace FIX
   const char SessionRejectReason_TAG_NOT_DEFINED_FOR_THIS_MESSAGE_TYPE_TEXT[] = "Tag not defined for this message type";
   const char SessionRejectReason_UNDEFINED_TAG_TEXT[] = "Undefined Tag";
   const char SessionRejectReason_TAG_SPECIFIED_WITHOUT_A_VALUE_TEXT[] = "Tag specified without a value";
-  const char SessionRejectReason_VALUE_IS_INCORRECT_TEXT[] = "Value is incorrect (out of range) for this tag";
+  const char SessionRejectReason_VALUE_IS_INCORRECT_TEXT[] = "Value is incorrect (out of range) for tag";
   const char SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE_TEXT[] = "Incorrect data format for value";
   const char SessionRejectReason_DECRYPTION_PROBLEM_TEXT[] = "Decryption problem";
   const char SessionRejectReason_SIGNATURE_PROBLEM_TEXT[] = "Signature problem";

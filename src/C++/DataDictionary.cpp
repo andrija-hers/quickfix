@@ -108,7 +108,8 @@ DataDictionary& DataDictionary::operator=( const DataDictionary& rhs )
   return *this;
 }
 
-void DataDictionary::validate( const Message& message,
+void DataDictionary::validate( int direction,
+                               const Message& message,
                                const DataDictionary* const pSessionDD,
                                const DataDictionary* const pAppDD,
                                const ValidationRules* vrptr )
@@ -123,35 +124,36 @@ throw( FIX::Exception )
   {
     if( pSessionDD->getVersion() != beginString )
     {
-      throw UnsupportedVersion();
+      if( !ValidationRules::shouldTolerateVersionMismatch( vrptr, direction) )
+        throw UnsupportedVersion();
     }
   }
 
-  int field = 0;
-  if ( ValidationRules::shouldValidateFieldsOutOfOrder( vrptr ) && !message.hasValidStructure(field) )
-    throw TagOutOfOrder(field);
+  int tag = 0;
 
   if ( pAppDD != 0 && pAppDD->m_hasVersion )
   {
-    pAppDD->checkMsgType( msgType );
-    pAppDD->checkHasRequired( message.getHeader(), message, message.getTrailer(), msgType, vrptr );
+    pAppDD->checkMsgType( direction, msgType, vrptr );
+    if ( !message.hasValidStructure(tag) && !ValidationRules::shouldTolerateOutOfOrderTag( vrptr, direction, msgType, tag ) )
+      throw TagOutOfOrder(tag);
+    pAppDD->checkHasRequired( direction, message.getHeader(), message, message.getTrailer(), msgType, vrptr );
   }
 
   if( pSessionDD != 0 )
   {
-    pSessionDD->iterate( message.getHeader(), msgType, vrptr );
-    pSessionDD->iterate( message.getTrailer(), msgType, vrptr );
+    pSessionDD->iterate( direction, message.getHeader(), msgType, vrptr );
+    pSessionDD->iterate( direction, message.getTrailer(), msgType, vrptr );
   }
 
   if( pAppDD != 0 )
   {
-    pAppDD->iterate( message, msgType, vrptr );
+    pAppDD->iterate( direction, message, msgType, vrptr );
   }
 }
 
-void DataDictionary::iterate( const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr ) const
+void DataDictionary::iterate( int direction, const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr ) const
 {
-  if ( ValidationRules::shouldValidate(vrptr) ) 
+  if ( !ValidationRules::shouldValidate(vrptr) ) 
     return;
   int lastField = 0;
 
@@ -161,22 +163,22 @@ void DataDictionary::iterate( const FieldMap& map, const MsgType& msgType, const
     const FieldBase& field = i->second;
     if( i != map.begin() && (field.getTag() == lastField) )
       throw RepeatedTag( lastField );
-    checkHasValue( field, vrptr );
+    checkHasValue( direction, msgType, field, vrptr );
 
     if ( m_hasVersion )
     {
-      checkValidFormat( field, vrptr );
-      checkValue( field, vrptr );
+      checkValidFormat( direction, msgType, field, vrptr );
+      checkValue( direction, msgType, field, vrptr );
     }
 
-    if ( m_beginString.getValue().length() && shouldCheckTag( field, vrptr ) )
+    if ( m_beginString.getValue().length() && shouldCheckTag( msgType, field, vrptr ) )
     {
-      checkValidTagNumber( msgType, field, vrptr );
+      checkValidTagNumber( direction, msgType, field, vrptr );
       if ( !Message::isHeaderField( field, this )
            && !Message::isTrailerField( field, this ) )
       {
-        checkIsInMessage( field, msgType, vrptr );
-        checkGroupCount( field, map, msgType );
+        checkIsInMessage( direction, field, msgType, vrptr );
+        checkGroupCount( direction, field, map, msgType );
       }
     }
     lastField = field.getTag();
@@ -609,5 +611,266 @@ TYPE::Type DataDictionary::XMLTypeToType( const std::string& type ) const
   if ( type == "COUNTRY" ) return TYPE::Country;
   if ( type == "TIME" ) return TYPE::UtcTimeStamp;
   return TYPE::Unknown;
+}
+
+bool DataDictionary::isFieldValue( int field, const std::string& value ) const
+{
+  FieldToValue::const_iterator i = m_fieldValues.find( field );
+  if ( i == m_fieldValues.end() )
+  {
+    return false;
+  }
+  if( !isMultipleValueField( field ) )
+  {
+    return i->second.find( value ) != i->second.end();
+  }
+
+  // MultipleValue
+  std::string::size_type startPos = 0;
+  std::string::size_type endPos = 0;
+  do
+  {
+    endPos = value.find_first_of(' ', startPos);
+    std::string singleValue =
+      value.substr( startPos, endPos - startPos );
+    if( i->second.find( singleValue ) == i->second.end() )
+      return false;
+    startPos = endPos + 1;
+  } while( endPos != std::string::npos );
+  return true;
+}
+
+bool DataDictionary::isGroup( const std::string& msg, int field ) const
+{
+  FieldToGroup::const_iterator i = m_groups.find( field );
+  if ( i == m_groups.end() ) return false;
+
+  const FieldPresenceMap& presenceMap = i->second;
+
+  FieldPresenceMap::const_iterator iter = presenceMap.find( msg );
+  return ( iter != presenceMap.end() );
+}
+
+bool DataDictionary::getGroup( const std::string& msg, int field, int& delim,
+               const DataDictionary*& pDataDictionary ) const
+{
+  FieldToGroup::const_iterator i = m_groups.find( field );
+  if ( i == m_groups.end() ) 
+    return false;
+
+  const FieldPresenceMap& presenceMap = i->second;
+
+  FieldPresenceMap::const_iterator iter = presenceMap.find( msg );
+  if( iter == presenceMap.end() )
+    return false;
+
+  std::pair < int, DataDictionary* > pair = iter->second;
+  delim = pair.first;
+  pDataDictionary = pair.second;
+  return true;
+}
+
+void DataDictionary::checkMsgType( int direction, const MsgType& msgType, const ValidationRules* vrptr ) const
+throw( InvalidMessageType )
+{
+  if ( !isMsgType( msgType.getValue() ) && !ValidationRules::shouldTolerateMissingMessageType( vrptr, direction ) )
+    throw InvalidMessageType();
+}
+
+void DataDictionary::checkValidTagNumber( int direction, const MsgType& msgType, const FieldBase& field, const ValidationRules* vrptr ) const
+throw( InvalidTagNumber )
+{
+  //copy of checkIsInMessage
+  if( m_fields.find( field.getTag() ) == m_fields.end() )
+  {
+    if ( ValidationRules::shouldTolerateUnknownTag( vrptr, direction, msgType, field.getTag() ) ) 
+      return;
+    throw InvalidTagNumber( field.getTag(), field.getTagAsString());
+  }
+}
+
+void DataDictionary::checkValue( int direction, const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr ) const
+throw( IncorrectTagValue )
+{
+  if ( !hasFieldValue( field.getTag() ) ) return ;
+
+  const std::string& value = field.getString();
+  if ( !isFieldValue( field.getTag(), value ) )
+  {
+    if( !ValidationRules::shouldTolerateTagValue( vrptr, direction, msgType, field.getTag() ) )
+      throw IncorrectTagValue( field.getTag(), field.getTagAsString());
+  }
+}
+
+void DataDictionary::checkHasValue( int direction, const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr ) const
+throw( NoTagValue )
+{
+  if ( !field.getString().length() && !ValidationRules::shouldTolerateEmptyTag( vrptr, direction, msgType, field.getTag() ) )
+    throw NoTagValue( field.getTag(), field.getTagAsString());
+}
+
+void DataDictionary::checkIsInMessage (
+  int direction,
+  const FieldBase& field,
+  const MsgType& msgType,
+  const ValidationRules* vrptr ) const
+throw( TagNotDefinedForMessage )
+{
+  if ( !isMsgField( msgType, field.getTag() ) )
+  {
+    if ( ! ValidationRules::shouldTolerateUnknownTag( vrptr, direction, msgType, field.getTag() ) )
+      throw TagNotDefinedForMessage( field.getTag(), field.getTagAsString());
+  }
+}
+
+void DataDictionary::checkGroupCount (
+  int direction,
+  const FieldBase& field,
+  const FieldMap& fieldMap,
+  const MsgType& msgType,
+  const ValidationRules* vrptr ) const
+throw( RepeatingGroupCountMismatch )
+{
+  int fieldNum = field.getTag();
+  if( isGroup(msgType, fieldNum) )
+  {
+    if( (int)fieldMap.groupCount(fieldNum)
+      != IntConvertor::convert(field.getString()) &&
+      ! ValidationRules::shouldTolerateRepeatingGroupCountMismatch( vrptr, direction, msgType, field.getTag() )
+      )
+    {
+      throw RepeatingGroupCountMismatch(fieldNum);
+    }
+  }
+}
+
+void DataDictionary::checkHasRequired
+( int direction, const FieldMap& header, const FieldMap& body, const FieldMap& trailer,
+  const MsgType& msgType,
+  const ValidationRules* vrptr ) const
+throw( RequiredTagMissing )
+{
+  NonBodyFields::const_iterator iNBF;
+  for( iNBF = m_headerFields.begin(); iNBF != m_headerFields.end(); ++iNBF )
+  {
+    if( iNBF->second == true && !header.isSetField(iNBF->first) )
+    {
+      if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, direction, msgType, iNBF->first ) ) 
+        throw RequiredTagMissing( iNBF->first, IntConvertor::convert(iNBF->first) );
+    }
+  }
+
+  for( iNBF = m_trailerFields.begin(); iNBF != m_trailerFields.end(); ++iNBF )
+  {
+    if( iNBF->second == true && !trailer.isSetField(iNBF->first) )
+      if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, direction, msgType, iNBF->first ) ) 
+        throw RequiredTagMissing( iNBF->first, IntConvertor::convert(iNBF->first) );
+  }
+
+  MsgTypeToField::const_iterator iM
+    = m_requiredFields.find( msgType.getString() );
+  if ( iM == m_requiredFields.end() ) return ;
+
+  const MsgFields& fields = iM->second;
+  MsgFields::const_iterator iF;
+  for( iF = fields.begin(); iF != fields.end(); ++iF )
+  {
+    if( !body.isSetField(*iF) )
+      if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, direction, msgType, *iF ) ) 
+        throw RequiredTagMissing( *iF, IntConvertor::convert(*iF) );
+  }
+
+  FieldMap::g_iterator groups;
+  for( groups = body.g_begin(); groups != body.g_end(); ++groups )
+  {
+    int delim;
+    const DataDictionary* DD = 0;
+    int field = groups->first;
+    if( getGroup( msgType.getValue(), field, delim, DD ) )
+    {
+      std::vector<FieldMap*>::const_iterator group;
+      for( group = groups->second.begin(); group != groups->second.end(); ++group )
+        DD->checkHasRequired( direction, **group, **group, **group, msgType, vrptr );
+    }
+  }
+}
+
+void DataDictionary::checkValidFormat( int direction, const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr ) const
+  throw( IncorrectDataFormat )
+{
+  try
+  {
+    TYPE::Type type = TYPE::Unknown;
+    getFieldType( field.getTag(), type );
+    switch ( type )
+    {
+    case TYPE::String:
+      STRING_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Char:
+      CHAR_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Price:
+      PRICE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Int:
+      INT_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Amt:
+      AMT_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Qty:
+      QTY_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Currency:
+      CURRENCY_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::MultipleValueString:
+      MULTIPLEVALUESTRING_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::MultipleStringValue:
+      MULTIPLESTRINGVALUE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::MultipleCharValue:
+      MULTIPLECHARVALUE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Exchange:
+      EXCHANGE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::UtcTimeStamp:
+      UTCTIMESTAMP_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Boolean:
+      BOOLEAN_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::LocalMktDate:
+      LOCALMKTDATE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Data:
+      DATA_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Float:
+      FLOAT_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::PriceOffset:
+      PRICEOFFSET_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::MonthYear:
+      MONTHYEAR_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::DayOfMonth:
+      DAYOFMONTH_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::UtcDate:
+      UTCDATE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::UtcTimeOnly:
+      UTCTIMEONLY_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::NumInGroup:
+      NUMINGROUP_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Percentage:
+      PERCENTAGE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::SeqNum:
+      SEQNUM_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Length:
+      LENGTH_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Country:
+      COUNTRY_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::TzTimeOnly:
+      TZTIMEONLY_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::TzTimeStamp:
+      TZTIMESTAMP_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::XmlData:
+      XMLDATA_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Language:
+      LANGUAGE_CONVERTOR::convert( field.getString() ); break;
+    case TYPE::Unknown: break;
+    }
+  }
+  catch ( FieldConvertError& )
+  { 
+    if( !ValidationRules::shouldTolerateBadFormatTag( vrptr, direction, msgType, field.getTag() ) )
+      throw IncorrectDataFormat( field.getTag(), field.getTagAsString() );
+  }
 }
 }

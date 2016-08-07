@@ -403,11 +403,11 @@ void Session::nextResendRequest( const Message& resendRequest, const UtcTimeStam
 
       const DataDictionary& applicationDD =
         m_dataDictionaryProvider.getApplicationDataDictionary(applVerID);
-      msg = Message( *i, sessionDD, applicationDD, &m_validationRules );
+      msg = Message( OUTGOING_DIRECTION, *i, sessionDD, applicationDD, &m_validationRules );
     }
     else
     {
-      msg = Message( *i, sessionDD, &m_validationRules );
+      msg = Message( OUTGOING_DIRECTION, *i, sessionDD, &m_validationRules );
     }
 
 
@@ -473,12 +473,12 @@ throw( FIX::Exception )
   //std::cout << "messageFromString " << string << std::endl;
   try {
   if( m_sessionID.isFIXT() ) 
-    msg = new Message( string,
+    msg = new Message( OUTGOING_DIRECTION, string,
       m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString()),
       m_dataDictionaryProvider.getApplicationDataDictionary(m_targetDefaultApplVerID),
       &m_validationRules );
   else
-    msg = new Message( string,
+    msg = new Message( OUTGOING_DIRECTION, string,
       m_dataDictionaryProvider.getSessionDataDictionary(m_sessionID.getBeginString()),
       &m_validationRules );
   if (msg ) 
@@ -491,18 +491,19 @@ throw( FIX::Exception )
       msg->getHeader().getFieldIfSet(applVerID);
       const DataDictionary& applicationDataDictionary = 
         m_dataDictionaryProvider.getApplicationDataDictionary(applVerID);
-      DataDictionary::validate( *msg, &sessionDataDictionary, &applicationDataDictionary, 0 );
+      DataDictionary::validate( OUTGOING_DIRECTION, *msg, &sessionDataDictionary, &applicationDataDictionary, 0 );
     }
     else
     {
-      sessionDataDictionary.validate( *msg, &m_validationRules );
+      sessionDataDictionary.validate( OUTGOING_DIRECTION, *msg, &m_validationRules );
+      std::cout << "validation ok for messageFromString" << std::endl;
     }
   }
   return msg;
   }
   catch (Exception &e) {
     //std::cout << "Exception in messageFromString " << e.what() << std::endl;
-    m_state.onIncomingRejected( string, e.what() );
+    m_state.onOutgoingRejected( string, e.what() );
     throw e;
   }
 }
@@ -866,12 +867,12 @@ void Session::generateReject( int direction, const Header& header, const std::st
     if ( direction == OUTGOING_DIRECTION )
     {
       //std::cout << "onOutgoingRejected" << std::endl;
-      m_state.onOutgoingRejected( messagetext, reason );
+      m_state.onOutgoingRejected( messagetext, std::string(reason)+" "+IntConvertor::convert( field ) );
     }
     if ( direction == INCOMING_DIRECTION ) 
     {
       //std::cout << "onIncomingRejected" << std::endl;
-      m_state.onIncomingRejected( messagetext, reason );
+      m_state.onIncomingRejected( messagetext, std::string(reason)+" "+IntConvertor::convert( field ) );
     }
     //std::cout << "Rejected log populated with " << reason << std::endl;
   }
@@ -1316,13 +1317,15 @@ void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, int d
     {
       const DataDictionary& applicationDD =
         m_dataDictionaryProvider.getApplicationDataDictionary(m_senderDefaultApplVerID);
-      next( Message( msg, sessionDD, applicationDD, &m_validationRules ), timeStamp, direction, queued );
+      next( Message( INCOMING_DIRECTION, msg, sessionDD, applicationDD, &m_validationRules ), timeStamp, direction, queued );
     }
     else
     {
-      next( Message( msg, sessionDD, &m_validationRules ), timeStamp, direction, queued );
+      next( Message( INCOMING_DIRECTION, msg, sessionDD, &m_validationRules ), timeStamp, direction, queued );
     }
   }
+  catch ( FieldNotFound & e ) 
+  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_REQUIRED_TAG_MISSING, e.field ) ); }
   catch ( InvalidTagNumber & e )
   { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INVALID_TAG_NUMBER, e.field ) ); }
   catch ( NoTagValue & e )
@@ -1434,11 +1437,11 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, int d
       header.getFieldIfSet(applVerID);
       const DataDictionary& applicationDataDictionary = 
         m_dataDictionaryProvider.getApplicationDataDictionary(applVerID);
-      DataDictionary::validate( message, &sessionDataDictionary, &applicationDataDictionary, 0 );
+      DataDictionary::validate( direction, message, &sessionDataDictionary, &applicationDataDictionary, 0 );
     }
     else
     {
-      sessionDataDictionary.validate( message, &m_validationRules );
+      sessionDataDictionary.validate( direction, message, &m_validationRules );
     }
 
     if ( msgType == MsgType_Logon )

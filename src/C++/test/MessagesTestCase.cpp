@@ -166,21 +166,31 @@ TEST(setString)
     "";
 
   FIX::Message object;
-  object.setString( strGood );
-  object.setString( std::string(strNull, 68) );
+  object.setString( FIX::OUTGOING_DIRECTION, strGood );
+  object.setString( FIX::OUTGOING_DIRECTION, std::string(strNull, 68) );
   FIX::ValidationRules vr;
-  object.setString( strNoLengthAndChk, &vr );
+  object.setString( FIX::OUTGOING_DIRECTION, strNoLengthAndChk, &vr );
 
-  CHECK_THROW( object.setString( strTrailingCharacter ), InvalidMessage );
-  CHECK_THROW( object.setString( strNoChk ), InvalidMessage );
-  CHECK_THROW( object.setString( strBadChk ), InvalidMessage );
-  CHECK_THROW( object.setString( strBad ), InvalidMessage );
-  CHECK_THROW( object.setString( strBadHeaderOrder ), InvalidMessage );
-  CHECK_THROW( object.setString( strNoLengthAndChk ), InvalidMessage );
-  CHECK_THROW( object.setString( strBadLength ), InvalidMessage );
-  CHECK_THROW( object.setString( strBadChecksum ), InvalidMessage );
-  CHECK_THROW( object.setString( strJunk ), InvalidMessage );
-  CHECK_THROW( object.setString( strEmpty ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strTrailingCharacter ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strNoChk ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strBadChk ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strBad ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strBadHeaderOrder ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strNoLengthAndChk ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strBadLength ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strBadChecksum ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strJunk ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    strEmpty ), InvalidMessage );
 
   DataDictionary dataDictionary;
   dataDictionary.addHeaderField( 11, false );
@@ -190,7 +200,8 @@ TEST(setString)
   TransactTime transactTime;
   Symbol symbol;
   vr.setShouldValidate(true);
-  object.setString( strBodyFields, &vr, &dataDictionary );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    strBodyFields, &vr, &dataDictionary );
 
   CHECK( object.getHeader().isSetField( clOrdID ) );
   CHECK( object.getTrailer().isSetField( transactTime ) );
@@ -210,7 +221,8 @@ TEST(setStringWithGroup)
     "350460\00167=2\0011=00303\00155=fred\00154=1\00140=1\00159=3\001394=3\00110="
     "138\001";
 
-  object.setString( str, &vr, &dataDictionary );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
@@ -227,7 +239,8 @@ TEST(setStringWithGroupWithoutDelimiter)
     "67=2\0011=00303\00155=fred\00154=1\00140=1\00159=3\001394=3\00110="
     "054\001";
 
-  object.setString( str, &vr, &dataDictionary );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
@@ -244,7 +257,8 @@ TEST(setStringWithHeaderGroup)
     "628=HOP2\001629=20040916-16:19:18.328\001630=ID2\001"
     "10=079\001";
 
-  object.setString( str, &vr, &dataDictionary );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
@@ -271,7 +285,8 @@ TEST(setStringWithHighBit)
   msg.set(data);
   std::string str = msg.toString();
 
-  object.setString( str, &vr, &dataDictionary );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    str, &vr, &dataDictionary );
   CHECK_EQUAL( str, object.toString() );
 }
 
@@ -319,7 +334,8 @@ TEST(checkSum)
 
   chksum %= 256;
 
-  object.setString( str2, &vr );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    str2, &vr );
   CHECK_EQUAL( chksum, object.checkSum() );
 }
 
@@ -332,7 +348,8 @@ TEST(headerFieldsFirst)
     "8=FIX.4.2\0019=95\00135=D\00134=5\00149=ISLD\00155=INTC\001"
     "52=00000000-00:00:00\00156=TW\00111=ID\00121=3\001"
     "40=1\00154=1\00160=00000000-00:00:00\00110=000\001";
-  object.setString( str, &vr );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    str, &vr );
   int field = 0;
   CHECK( !object.hasValidStructure(field) );
   CHECK_EQUAL( 52, field );
@@ -345,7 +362,8 @@ TEST(noEndingDelim)
     "8=FIX.4.2\0019=45\00135=0\00134=3\00149=TW\001"
     "52=20000426-12:05:06\00156=ISLD\00110=218";
 
-  CHECK_THROW( object.setString( str ), InvalidMessage );
+  CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
+    str ), InvalidMessage );
 }
 
 TEST(outOfOrder)
@@ -366,7 +384,8 @@ TEST(outOfOrder)
     "31=109.03125\00137=1\00138=3000\00139=2\00148=123ABC789\001"
     "54=1\00155=ABCD\00160=00000000-00:00:00\001150=2\001151=0\00110=225\001";
 
-  object.setString( str, &vr );
+  object.setString( FIX::OUTGOING_DIRECTION,
+    str, &vr );
   CHECK_EQUAL( expected, object.toString() );
 }
 
@@ -613,7 +632,8 @@ TEST(logonSetString)
   Logon object;
 
   object.setString
-    ( "8=FIX.4.2\0019=12\00135=A\001108=30\00110=026\001" ) ;
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=12\00135=A\001108=30\00110=026\001" ) ;
 
   HeartBtInt heartBtInt;
   CHECK_EQUAL( 30, object.get( heartBtInt ) );
@@ -634,7 +654,8 @@ TEST(testRequestSetString)
   TestRequest object;
 
   object.setString
-    ( "8=FIX.4.2\0019=12\00135=1\001112=23\00110=007\001" );
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=12\00135=1\001112=23\00110=007\001" );
 
   TestReqID testReqID;
   CHECK_EQUAL( "23", object.get( testReqID ) );
@@ -656,7 +677,8 @@ TEST(resendRequestSetString)
   ResendRequest object;
 
   object.setString
-    ( "8=FIX.4.2\0019=16\00135=2\0017=1\00116=233\00110=184\001" );
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=16\00135=2\0017=1\00116=233\00110=184\001" );
 
   BeginSeqNo beginSeqNo;
   EndSeqNo endSeqNo;
@@ -681,7 +703,8 @@ TEST(rejectSetString)
   Reject object;
 
   object.setString
-    ( "8=FIX.4.2\0019=36\00135=3\00145=73\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=36\00135=3\00145=73\001"
       "58=This Message SUCKS!!!\00110=029\001" );
 
   RefSeqNum refSeqNum;
@@ -706,7 +729,8 @@ TEST(sequenceResetSetString)
   SequenceReset object;
 
   object.setString
-    ( "8=FIX.4.2\0019=17\00135=4\00136=88\001123=Y\00110=028\001" );
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=17\00135=4\00136=88\001123=Y\00110=028\001" );
 
   GapFillFlag gapFillFlag;
   NewSeqNo newSeqNo;
@@ -729,7 +753,8 @@ TEST(logoutSetString)
   Logout object;
 
   object.setString
-    ( "8=FIX.4.2\0019=18\00135=5\00158=See Ya...\00110=006\001" );
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=18\00135=5\00158=See Ya...\00110=006\001" );
 
   Text text;
   CHECK_EQUAL( "See Ya...", object.get( text ) );
@@ -756,7 +781,8 @@ TEST(newOrderSingleSetString)
   NewOrderSingle object;
 
   object.setString
-   ( "8=FIX.4.2\0019=48\00135=D\00111=ORDERID\00121=3\00140=2\001"
+   ( FIX::OUTGOING_DIRECTION,
+     "8=FIX.4.2\0019=48\00135=D\00111=ORDERID\00121=3\00140=2\001"
      "54=1\00155=MSFT\00160=TODAY\00110=028\001" );
 
   ClOrdID clOrdID;
@@ -799,7 +825,8 @@ TEST(executionReportSetString)
   ExecutionReport object;
 
   object.setString
-    ( "8=FIX.4.2\0019=77\00135=8\0016=23.4\00114=300\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=77\00135=8\0016=23.4\00114=300\001"
       "17=EXECID\00120=1\00137=ORDERID\00139=3\00154=4\001"
       "55=MSFT\001150=2\001151=200\00110=052\001" );
 
@@ -845,7 +872,8 @@ TEST(dontKnowTradeSetString)
   DontKnowTrade object;
 
   object.setString
-    ( "8=FIX.4.2\0019=45\00135=Q\00117=EXECID\00137=ORDERID\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=45\00135=Q\00117=EXECID\00137=ORDERID\001"
       "54=2\00155=MSFT\001127=1\00110=195\001" );
 
   OrderID orderID;
@@ -883,7 +911,8 @@ TEST(orderCancelReplaceRequestSetString)
   OrderCancelReplaceRequest object;
 
   object.setString
-    ( "8=FIX.4.2\0019=63\00135=G\00111=CLIENTID\00121=1\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=63\00135=G\00111=CLIENTID\00121=1\001"
       "40=3\00141=ORIGINALID\00154=2\00155=MSFT\00160=TODAY\001"
       "10=228\001" );
 
@@ -922,7 +951,8 @@ TEST(orderCancelRequestSetString)
   OrderCancelRequest object;
 
   object.setString
-    ( "8=FIX.4.2\0019=53\00135=F\00111=CLIENTID\00141=ORIGINALID\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=53\00135=F\00111=CLIENTID\00141=ORIGINALID\001"
       "54=1\00155=MSFT\00160=TODAY\00110=058\001" );
 
   OrigClOrdID origClOrdID;
@@ -956,7 +986,8 @@ TEST(orderCancelRejectSetString)
   OrderCancelReject object;
 
   object.setString
-    ( "8=FIX.4.2\0019=53\00135=9\00111=CLIENTID\00137=ORDERID\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=53\00135=9\00111=CLIENTID\00137=ORDERID\001"
       "39=1\00141=ORIGINALID\001434=2\00110=229\001" );
 
   OrderID orderID;
@@ -989,7 +1020,8 @@ TEST(orderStatusRequestSetString)
   OrderStatusRequest object;
 
   object.setString
-    ( "8=FIX.4.2\0019=30\00135=H\00111=CLIENTID\00154=1\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=30\00135=H\00111=CLIENTID\00154=1\001"
       "55=MSFT\00110=141\001" );
 
   ClOrdID clOrdID;
@@ -1044,7 +1076,8 @@ TEST(newOrderListSetString)
   DataDictionary dataDictionary( "../spec/FIX42.xml" );
   
   object.setString
-    ( "8=FIX.4.2\0019=95\00135=E\00166=1\00168=3\00173=3\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=95\00135=E\00166=1\00168=3\00173=3\001"
       "11=A\00154=1\00155=DELL\00167=1\001"
       "11=B\00154=2\00155=LNUX\00167=2\001"
       "11=C\00154=3\00155=RHAT\00167=3\001"
@@ -1098,7 +1131,8 @@ TEST(newOrderListSetString)
   CHECK_EQUAL( '3', side );
 
   object.setString
-    ( "8=FIX.4.2\0019=26\00135=E\00166=1\00168=3\00173=0\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=26\00135=E\00166=1\00168=3\00173=0\001"
       "394=0\00110=137\001", &vr, &dataDictionary );
 }
 
@@ -1129,7 +1163,8 @@ TEST(massQuoteSetString)
   DataDictionary dataDictionary( "../spec/FIX42.xml" );
 
   object.setString
-    ( "8=FIX.4.2\0019=54\00135=i\001117=1\001296=1\001302=A\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.2\0019=54\00135=i\001117=1\001296=1\001302=A\001"
       "311=DELL\001364=10\001365=DELL\001COMP\001\00110=152\001",
        &vr, &dataDictionary );
 
@@ -1193,7 +1228,8 @@ TEST(newOrderCrossSetString)
   DataDictionary dataDictionary( "../spec/FIX44.xml" );
 
   object.setString
-    ( "8=FIX.4.4\0019=75\00135=s\001552=1\00154=1\001453=2\001448=PARTY1\001"
+    ( FIX::OUTGOING_DIRECTION,
+      "8=FIX.4.4\0019=75\00135=s\001552=1\00154=1\001453=2\001448=PARTY1\001"
       "447=D\001452=3\001448=PARTY2\001447=D\001452=3\00138=100\00110=223\001",
        &vr, &dataDictionary );
 

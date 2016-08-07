@@ -27,20 +27,23 @@
 
 namespace FIX
 {
-class FieldBase;
-
 class ValidationRules
 {
   public:
     static bool shouldValidate( const ValidationRules* vr );
-    static bool shouldValidateFieldsOutOfOrder( const ValidationRules* vr );
     static bool shouldValidateLength( const ValidationRules* vr );
     static bool shouldValidateChecksum( const ValidationRules* vr );
-    static bool shouldCheckTag( const ValidationRules* vr, const FieldBase& field );
-    static bool shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, int tag );
-    static bool shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field );
-    static bool shouldTolerateTagValue ( const ValidationRules* vr, const FieldBase& field );
-    static bool shouldAllowTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field );
+    static bool shouldCheckTag( const ValidationRules* vr, const std::string& msgType, int tag );
+    static bool shouldTolerateBadFormatTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
+    static bool shouldTolerateMissingTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
+    static bool shouldTolerateMissingMessageType ( const ValidationRules* vr, int direction );
+    static bool shouldTolerateRepeatingGroupCountMismatch (const ValidationRules* vr, int direction, const std::string& msgType, int tag);
+    static bool shouldTolerateUnknownTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
+    static bool shouldTolerateEmptyTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
+    static bool shouldTolerateTagValue ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
+    static bool shouldTolerateOutOfOrderTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
+    static bool shouldTolerateDuplicateTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
+    static bool shouldTolerateVersionMismatch ( const ValidationRules* vr, int direction );
   public:
     ValidationRules();
     virtual ~ValidationRules();
@@ -56,14 +59,20 @@ class ValidationRules
     void setValidateUserDefinedFields ( bool validateuserdefinedfields );
 
     bool shouldValidate ( ) const;
-    bool shouldCheckTag ( const FieldBase& field ) const;
-    bool shouldTolerateMissingTag ( const std::string& msgType, int tag ) const;
-    bool shouldTolerateMissingTag ( const std::string& msgType, const FieldBase& field ) const;
-    bool shouldTolerateTagValue ( const FieldBase& field ) const;
-    bool shouldAllowTag ( const std::string& msgType, const FieldBase& field ) const;
+    bool shouldCheckTag ( const std::string& msgType, int tag ) const;
+    bool shouldTolerateBadFormatTag ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateMissingTag ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateMissingMessageType ( int direction ) const;
+    bool shouldTolerateEmptyTag ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateOutOfOrderTag ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateDuplicateTag ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateUnknownTag ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateTagValue ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldAllowTag ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateRepeatingGroupCountMismatch ( int direction, const std::string& msgType, int tag ) const;
+    bool shouldTolerateVersionMismatch ( int direction ) const;
     bool shouldValidateLength ( ) const;
     bool shouldValidateChecksum ( ) const;
-    bool shouldValidateFieldsOutOfOrder ( ) const;
     bool shouldValidateFieldsHaveValues ( ) const;
     bool shouldValidateUserDefinedFields ( ) const;
 
@@ -71,6 +80,14 @@ class ValidationRules
     static const std::string AnyMsgType;
     typedef std::set<int> MsgTypeValues;
     typedef std::map< std::string, MsgTypeValues > MsgTypeMap;
+    class DirectionAwareMsgTypeMap {
+      private: 
+        MsgTypeMap m_inboundFields;
+        MsgTypeMap m_outboundFields;
+      public: 
+        void safeAddMsgTypeValue( int inbound, const std::string& msgType, int tag );
+        bool shouldAllowTag( int direction, const std::string& msgType, int tag ) const;
+    };
     bool m_validate;
     bool m_validateBounds;
     bool m_validateLength;
@@ -79,12 +96,21 @@ class ValidationRules
     bool m_validateFieldsHaveValues;
     bool m_validateUserDefinedFields;
     MsgTypeMap m_allowedFields;
-    MsgTypeMap m_allowedEmptyFields;
-    MsgTypeMap m_allowedMissingFields;
+    DirectionAwareMsgTypeMap m_badFormatFields;
+    DirectionAwareMsgTypeMap m_outOfBoundsFields;
+    DirectionAwareMsgTypeMap m_missingFields;
+    DirectionAwareMsgTypeMap m_repeatingGroupMismatches;
+    DirectionAwareMsgTypeMap m_unknownFields;
+    DirectionAwareMsgTypeMap m_emptyFields;
+    DirectionAwareMsgTypeMap m_outOfOrderFields;
+    DirectionAwareMsgTypeMap m_duplicateFields;
+    DirectionAwareMsgTypeMap m_versionMismatches;
     void addAllowedFieldGroup ( const std::string& afgstring );
     void addValidationRule ( const std::string& validationrulestr );
 
-    MsgTypeMap::const_iterator findMsgTypeValues( const MsgTypeMap& map, const std::string& msgtype ) const
+    bool standardAllowCheck( const DirectionAwareMsgTypeMap& dmtm, int direction, const std::string& msgType, int tag ) const ;
+
+    static MsgTypeMap::const_iterator findMsgTypeValues( const MsgTypeMap& map, const std::string& msgtype ) 
     throw( std::out_of_range )
     {
       MsgTypeMap::const_iterator mi = map.find(msgtype);
@@ -104,7 +130,7 @@ class ValidationRules
       return mi;
     }
 
-    MsgTypeMap::iterator findMsgTypeValues( MsgTypeMap& map, const std::string& msgtype )
+    static MsgTypeMap::iterator findMsgTypeValues( MsgTypeMap& map, const std::string& msgtype )
     throw( std::out_of_range )
     {
       MsgTypeMap::iterator mi = map.find(msgtype);
@@ -124,7 +150,7 @@ class ValidationRules
       return mi;
     }
 
-    MsgTypeMap::iterator findOrCreateMsgTypeValues( MsgTypeMap& map, const std::string& msgtype )
+    static MsgTypeMap::iterator findOrCreateMsgTypeValues( MsgTypeMap& map, const std::string& msgtype )
     {
       try
       {
@@ -137,7 +163,7 @@ class ValidationRules
       }
     }
 
-    bool mapHasValue ( const MsgTypeMap& map, const std::string& msgtype, int value ) const
+    static bool mapHasValue ( const MsgTypeMap& map, const std::string& msgtype, int value )
     throw( std::out_of_range )
     {
       MsgTypeMap::const_iterator mi;
@@ -153,7 +179,7 @@ class ValidationRules
       return si != mi->second.end();
     }
 
-    void safeAddMsgTypeValue ( MsgTypeMap& map, const std::string& msgtype, int value ) 
+    static void safeAddMsgTypeValue ( MsgTypeMap& map, const std::string& msgtype, int value ) 
     {
       findOrCreateMsgTypeValues( map, msgtype )->second.insert(value);
     }
@@ -179,6 +205,7 @@ class ValidationRules
         int parseSteps;
     };
     friend struct ValidationRule;
+    friend struct DirectionAwareMsgTypeMap;
 };
 }
 

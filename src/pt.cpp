@@ -306,7 +306,7 @@ long testSerializeFromStringHeartbeat( int count )
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, &vr, s_dataDictionary.get() );
+    message.setString( FIX::OUTGOING_DIRECTION, string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -322,7 +322,7 @@ long testSerializeFromStringAndValidateHeartbeat( int count )
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, &vr, s_dataDictionary.get() );
+    message.setString( FIX::OUTGOING_DIRECTION, string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -384,7 +384,7 @@ long testSerializeFromStringNewOrderSingle( int count )
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, &vr, s_dataDictionary.get() );
+    message.setString( FIX::OUTGOING_DIRECTION, string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -408,7 +408,7 @@ long testSerializeFromStringAndValidateNewOrderSingle( int count )
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    message.setString( string, &vr, s_dataDictionary.get() );
+    message.setString( FIX::OUTGOING_DIRECTION, string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -435,7 +435,7 @@ long testCreateQuoteRequest( int count )
     for( int j = 1; j <= 10; ++j )
     {
       symbol.setValue( "IBM" );
-      maturityMonthYear.setValue( "022003" );
+      maturityMonthYear.setValue( FIX::DateTime() );
       putOrCall.setValue( FIX::PutOrCall_PUT );
       strikePrice.setValue( 120 );
       side.setValue( FIX::Side_BUY );
@@ -512,7 +512,7 @@ long testSerializeFromStringQuoteRequest( int count )
   long start = GetTickCount();
   for ( int j = 0; j <= count; ++j )
   {
-    message.setString( string, &vr, s_dataDictionary.get() );
+    message.setString( FIX::OUTGOING_DIRECTION, string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -543,7 +543,7 @@ long testSerializeFromStringAndValidateQuoteRequest( int count )
   vr.setShouldValidate(true);
   for ( int j = 0; j <= count; ++j )
   {
-    message.setString( string, &vr, s_dataDictionary.get() );
+    message.setString( FIX::OUTGOING_DIRECTION, string, &vr, s_dataDictionary.get() );
   }
   return GetTickCount() - start;
 }
@@ -661,7 +661,7 @@ long testValidateNewOrderSingle( int count )
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    dataDictionary.validate( message );
+    dataDictionary.validate( FIX::OUTGOING_DIRECTION, message );
   }
   return GetTickCount() - start;
 }
@@ -685,7 +685,7 @@ long testValidateDictNewOrderSingle( int count )
   long start = GetTickCount();
   for ( int i = 0; i <= count; ++i )
   {
-    s_dataDictionary->validate( message );
+    s_dataDictionary->validate( FIX::OUTGOING_DIRECTION, message );
   }
   return GetTickCount() - start;
 }
@@ -714,7 +714,7 @@ long testValidateQuoteRequest( int count )
   long start = GetTickCount();
   for ( int j = 0; j <= count; ++j )
   {
-    dataDictionary.validate( message );
+    dataDictionary.validate( FIX::OUTGOING_DIRECTION, message );
   }
   return GetTickCount() - start;
 }
@@ -742,7 +742,7 @@ long testValidateDictQuoteRequest( int count )
   long start = GetTickCount();
   for ( int j = 0; j <= count; ++j )
   {
-    s_dataDictionary->validate( message );
+    s_dataDictionary->validate( FIX::OUTGOING_DIRECTION, message );
   }
   return GetTickCount() - start;
 }

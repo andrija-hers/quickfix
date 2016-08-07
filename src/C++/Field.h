@@ -114,6 +114,9 @@ public:
   int getTag() const
   { return m_tag; }
 
+  std::string getTagAsString() const
+  { return IntConvertor::convert(m_tag); }
+
   /// @deprecated Use getTag
   int getField() const
   { return getTag(); }
@@ -452,6 +455,60 @@ public:
     { return getValue() != rhs.getValue(); }
 };
 
+/// Field that contains a local date time value
+class DateTimeField : public FieldBase
+{
+public:
+  explicit DateTimeField( int field, const DateTime& data )
+: FieldBase( field, DateOnlyConvertor::convert( data ) ) {}
+  DateTimeField( int field )
+: FieldBase( field, DateOnlyConvertor::convert( DateTime() ) ) {}
+
+  void setValue( const DateTime& value )
+    { setString( DateOnlyConvertor::convert( value ) ); }
+  DateTime getValue() const throw ( IncorrectDataFormat )
+    { try
+      { return DateOnlyConvertor::convert( getString() ); }
+      catch( FieldConvertError& )
+      { throw IncorrectDataFormat( getTag(), getString() ); } }
+  operator DateTime() const
+    { return getValue(); }
+
+  bool operator<( const DateTimeField& rhs ) const
+    { return getValue() < rhs.getValue(); }
+  bool operator==( const DateTimeField& rhs ) const
+    { return getValue() == rhs.getValue(); }
+  bool operator!=( const DateTimeField& rhs ) const
+    { return getValue() != rhs.getValue(); }
+};
+
+/// Field that contains a monthyear value
+class MonthYearField : public FieldBase
+{
+public:
+  explicit MonthYearField( int field, const DateTime& data )
+: FieldBase( field, DateOnlyConvertor::convert( data ) ) {}
+  MonthYearField( int field )
+: FieldBase( field, DateOnlyConvertor::convert( DateTime() ) ) {}
+
+  void setValue( const DateTime& value )
+    { setString( MonthYearConvertor::convert( value ) ); }
+  DateTime getValue() const throw ( IncorrectDataFormat )
+    { try
+      { return MonthYearConvertor::convert( getString() ); }
+      catch( FieldConvertError& )
+      { throw IncorrectDataFormat( getTag(), getString() ); } }
+  operator DateTime() const
+    { return getValue(); }
+
+  bool operator<( const MonthYearField& rhs ) const
+    { return getValue() < rhs.getValue(); }
+  bool operator==( const MonthYearField& rhs ) const
+    { return getValue() == rhs.getValue(); }
+  bool operator!=( const MonthYearField& rhs ) const
+    { return getValue() != rhs.getValue(); }
+};
+
 /// Field that contains a UTC time value
 class UtcTimeOnlyField : public FieldBase
 {
@@ -507,12 +564,11 @@ typedef StringField MultipleValueStringField;
 typedef StringField MultipleStringValueField;
 typedef StringField MultipleCharValueField;
 typedef StringField ExchangeField;
-typedef StringField LocalMktDateField;
+typedef DateTimeField LocalMktDateField;
 typedef StringField DataField;
 typedef DoubleField FloatField;
 typedef DoubleField PriceOffsetField;
 typedef StringField MonthField;
-typedef StringField MonthYearField;
 typedef StringField DayOfMonthField;
 typedef UtcDateField UtcDateOnlyField;
 typedef IntField LengthField;
@@ -579,7 +635,7 @@ DEFINE_FIELD_TIMECLASS_NUM(NAME, TOK, TYPE, DEPRECATED_FIELD::NAME)
 #define DEFINE_BOOLEAN( NAME ) \
   DEFINE_FIELD_CLASS(NAME, Bool, FIX::BOOLEAN)
 #define DEFINE_LOCALMKTDATE( NAME ) \
-  DEFINE_FIELD_CLASS(NAME, String, FIX::LOCALMKTDATE)
+  DEFINE_FIELD_CLASS(NAME, DateTime, FIX::LOCALMKTDATE)
 #define DEFINE_DATA( NAME ) \
   DEFINE_FIELD_CLASS(NAME, Data, FIX::DATA)
 #define DEFINE_FLOAT( NAME ) \

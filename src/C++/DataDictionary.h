@@ -222,28 +222,7 @@ public:
     return i != m_fieldValues.end();
   }
 
-  bool isFieldValue( int field, const std::string& value ) const
-  {
-    FieldToValue::const_iterator i = m_fieldValues.find( field );
-    if ( i == m_fieldValues.end() )
-      return false;
-    if( !isMultipleValueField( field ) )
-      return i->second.find( value ) != i->second.end();
-
-    // MultipleValue
-    std::string::size_type startPos = 0;
-    std::string::size_type endPos = 0;
-    do
-    {
-      endPos = value.find_first_of(' ', startPos);
-      std::string singleValue =
-        value.substr( startPos, endPos - startPos );
-      if( i->second.find( singleValue ) == i->second.end() )
-        return false;
-      startPos = endPos + 1;
-    } while( endPos != std::string::npos );
-    return true;
-  }
+  bool isFieldValue( int field, const std::string& value ) const;
 
   void addGroup( const std::string& msg, int field, int delim,
                  const DataDictionary& dataDictionary )
@@ -255,35 +234,10 @@ public:
     presenceMap[ msg ] = std::make_pair( delim, pDD );
   }
 
-  bool isGroup( const std::string& msg, int field ) const
-  {
-    FieldToGroup::const_iterator i = m_groups.find( field );
-    if ( i == m_groups.end() ) return false;
-
-    const FieldPresenceMap& presenceMap = i->second;
-
-    FieldPresenceMap::const_iterator iter = presenceMap.find( msg );
-    return ( iter != presenceMap.end() );
-  }
+  bool isGroup( const std::string& msg, int field ) const;
 
   bool getGroup( const std::string& msg, int field, int& delim,
-                 const DataDictionary*& pDataDictionary ) const
-  {
-    FieldToGroup::const_iterator i = m_groups.find( field );
-    if ( i == m_groups.end() ) 
-      return false;
-
-    const FieldPresenceMap& presenceMap = i->second;
-
-    FieldPresenceMap::const_iterator iter = presenceMap.find( msg );
-    if( iter == presenceMap.end() )
-      return false;
-
-    std::pair < int, DataDictionary* > pair = iter->second;
-    delim = pair.first;
-    pDataDictionary = pair.second;
-    return true;
-  }
+                 const DataDictionary*& pDataDictionary ) const;
 
   bool isDataField( int field ) const
   {
@@ -301,33 +255,31 @@ public:
   }
 
   /// Validate a message.
-  static void validate( const Message& message,
+  static void validate( int direction,
+                        const Message& message,
                         const DataDictionary* const pSessionDD,
                         const DataDictionary* const pAppID,
                         const ValidationRules* vrptr ) throw( FIX::Exception );
 
-  void validate( const Message& message, const ValidationRules* vrptr = 0 ) const throw ( FIX::Exception )
-  { validate( message, false, vrptr ); }
-  void validate( const Message& message, bool bodyOnly, const ValidationRules* vrptr = 0 ) const throw( FIX::Exception )
-  { validate( message, bodyOnly ? (DataDictionary*)0 : this, this, vrptr ); }
+  void validate( int direction, const Message& message, const ValidationRules* vrptr = 0 ) const throw ( FIX::Exception )
+  { validate( direction, message, false, vrptr ); }
+  void validate( int direction, const Message& message, bool bodyOnly, const ValidationRules* vrptr = 0 ) const throw( FIX::Exception )
+  { validate( direction, message, bodyOnly ? (DataDictionary*)0 : this, this, vrptr ); }
 
   DataDictionary& operator=( const DataDictionary& rhs );
 
 private:
   /// Iterate through fields while applying checks.
-  void iterate( const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr = 0 ) const;
+  void iterate( int direction, const FieldMap& map, const MsgType& msgType, const ValidationRules* vrptr = 0 ) const;
 
   /// Check if message type is defined in spec.
-  void checkMsgType( const MsgType& msgType ) const
-  {
-    if ( !isMsgType( msgType.getValue() ) )
-      throw InvalidMessageType();
-  }
+  void checkMsgType( int direction, const MsgType& msgType, const ValidationRules* vrptr ) const
+  throw( InvalidMessageType );
 
   /// If we need to check for the tag in the dictionary
-  bool shouldCheckTag( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
+  bool shouldCheckTag( const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr = 0 ) const
   {
-    if( !ValidationRules::shouldCheckTag( vrptr, field ) )
+    if( !ValidationRules::shouldCheckTag( vrptr, msgType, field.getTag() ) )
       return false;
     if( field.getTag() >= FIELD::UserMin )
       return false;
@@ -336,200 +288,33 @@ private:
   }
 
   /// Check if field tag number is defined in spec.
-  void checkValidTagNumber( const MsgType& msgType, const FieldBase& field, const ValidationRules* vrptr = 0 ) const
-  throw( InvalidTagNumber )
-  {
-    if( m_fields.find( field.getTag() ) == m_fields.end() )
-    {
-      if ( ValidationRules::shouldTolerateMissingTag( vrptr, msgType, field ) ) 
-        return;
-      throw InvalidTagNumber( field.getTag() );
-    }
-  }
+  void checkValidTagNumber( int direction, const MsgType& msgType, const FieldBase& field, const ValidationRules* vrptr = 0 ) const
+  throw( InvalidTagNumber );
+  void checkValidFormat( int direction, const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr = 0 ) const
+  throw( IncorrectDataFormat );
 
-  void checkValidFormat( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
-  throw( IncorrectDataFormat )
-  {
-    if ( !ValidationRules::shouldCheckTag( vrptr, field ) )
-      return;
-    try
-    {
-      TYPE::Type type = TYPE::Unknown;
-      getFieldType( field.getTag(), type );
-      switch ( type )
-      {
-      case TYPE::String:
-        STRING_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Char:
-        CHAR_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Price:
-        PRICE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Int:
-        INT_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Amt:
-        AMT_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Qty:
-        QTY_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Currency:
-        CURRENCY_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::MultipleValueString:
-        MULTIPLEVALUESTRING_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::MultipleStringValue:
-        MULTIPLESTRINGVALUE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::MultipleCharValue:
-        MULTIPLECHARVALUE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Exchange:
-        EXCHANGE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::UtcTimeStamp:
-        UTCTIMESTAMP_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Boolean:
-        BOOLEAN_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::LocalMktDate:
-        LOCALMKTDATE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Data:
-        DATA_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Float:
-        FLOAT_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::PriceOffset:
-        PRICEOFFSET_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::MonthYear:
-        MONTHYEAR_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::DayOfMonth:
-        DAYOFMONTH_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::UtcDate:
-        UTCDATE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::UtcTimeOnly:
-        UTCTIMEONLY_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::NumInGroup:
-        NUMINGROUP_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Percentage:
-        PERCENTAGE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::SeqNum:
-        SEQNUM_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Length:
-        LENGTH_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Country:
-        COUNTRY_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::TzTimeOnly:
-        TZTIMEONLY_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::TzTimeStamp:
-        TZTIMESTAMP_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::XmlData:
-        XMLDATA_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Language:
-        LANGUAGE_CONVERTOR::convert( field.getString() ); break;
-      case TYPE::Unknown: break;
-      }
-    }
-    catch ( FieldConvertError& )
-    { throw IncorrectDataFormat( field.getTag(), field.getString() ); }
-  }
-
-  void checkValue( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
-  throw( IncorrectTagValue )
-  {
-    if ( !hasFieldValue( field.getTag() ) ) return ;
-
-    const std::string& value = field.getString();
-    if ( !isFieldValue( field.getTag(), value ) )
-    {
-      if( ValidationRules::shouldTolerateTagValue( vrptr, field ) )
-        return;
-      throw IncorrectTagValue( field.getTag() );
-    }
-  }
+  void checkValue( int direction, const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr = 0 ) const
+  throw( IncorrectTagValue );
 
   /// Check if a field has a value.
-  void checkHasValue( const FieldBase& field, const ValidationRules* vrptr = 0 ) const
-  throw( NoTagValue )
-  {
-    if ( ValidationRules::shouldCheckTag( vrptr, field ) )
-      return;
-    if ( !field.getString().length() )
-      throw NoTagValue( field.getTag() );
-  }
+  void checkHasValue( int direction, const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr = 0 ) const
+  throw( NoTagValue );
 
   /// Check if a field is in this message type.
-  void checkIsInMessage
-  ( const FieldBase& field, const MsgType& msgType, const ValidationRules* vrptr = 0 ) const
-  throw( TagNotDefinedForMessage )
-  {
-    if ( !isMsgField( msgType, field.getTag() ) )
-    {
-      if (ValidationRules::shouldAllowTag( vrptr, msgType, field ) )
-        return;
-      throw TagNotDefinedForMessage( field.getTag() );
-    }
-  }
+  void checkIsInMessage ( int direction, const FieldBase& field, const MsgType& msgType, const ValidationRules* vrptr = 0 ) const
+  throw( TagNotDefinedForMessage );
 
   /// Check if group count matches number of groups in
   void checkGroupCount
-  ( const FieldBase& field, const FieldMap& fieldMap, const MsgType& msgType ) const
-  throw( RepeatingGroupCountMismatch )
-  {
-    int fieldNum = field.getTag();
-    if( isGroup(msgType, fieldNum) )
-    {
-      if( (int)fieldMap.groupCount(fieldNum)
-        != IntConvertor::convert(field.getString()) )
-      {
-        std::cout << fieldNum << " RepeatingGroupCountMismatch, " << fieldMap.groupCount(fieldNum) << " != " << field.getString() << std::endl;
-        throw RepeatingGroupCountMismatch(fieldNum);
-      }
-    }
-  }
+  ( int direction, const FieldBase& field, const FieldMap& fieldMap, const MsgType& msgType, const ValidationRules* vrptr = 0 ) const
+  throw( RepeatingGroupCountMismatch );
 
   /// Check if a message has all required fields.
   void checkHasRequired
-  ( const FieldMap& header, const FieldMap& body, const FieldMap& trailer,
+  ( int direction, const FieldMap& header, const FieldMap& body, const FieldMap& trailer,
     const MsgType& msgType,
     const ValidationRules* vrptr ) const
-  throw( RequiredTagMissing )
-  {
-    NonBodyFields::const_iterator iNBF;
-    for( iNBF = m_headerFields.begin(); iNBF != m_headerFields.end(); ++iNBF )
-    {
-      if( iNBF->second == true && !header.isSetField(iNBF->first) )
-      {
-        if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, msgType, iNBF->first ) ) 
-          throw RequiredTagMissing( iNBF->first );
-      }
-    }
-
-    for( iNBF = m_trailerFields.begin(); iNBF != m_trailerFields.end(); ++iNBF )
-    {
-      if( iNBF->second == true && !trailer.isSetField(iNBF->first) )
-        if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, msgType, iNBF->first ) ) 
-          throw RequiredTagMissing( iNBF->first );
-    }
-
-    MsgTypeToField::const_iterator iM
-      = m_requiredFields.find( msgType.getString() );
-    if ( iM == m_requiredFields.end() ) return ;
-
-    const MsgFields& fields = iM->second;
-    MsgFields::const_iterator iF;
-    for( iF = fields.begin(); iF != fields.end(); ++iF )
-    {
-      if( !body.isSetField(*iF) )
-        if ( ! ValidationRules::shouldTolerateMissingTag( vrptr, msgType, *iF ) ) 
-          throw RequiredTagMissing( *iF );
-    }
-
-    FieldMap::g_iterator groups;
-    for( groups = body.g_begin(); groups != body.g_end(); ++groups )
-    {
-      int delim;
-      const DataDictionary* DD = 0;
-      int field = groups->first;
-      if( getGroup( msgType.getValue(), field, delim, DD ) )
-      {
-        std::vector<FieldMap*>::const_iterator group;
-        for( group = groups->second.begin(); group != groups->second.end(); ++group )
-          DD->checkHasRequired( **group, **group, **group, msgType, vrptr );
-      }
-    }
-  }
+  throw( RequiredTagMissing );
 
   int lookupXMLFieldNumber( DOMDocument*, DOMNode* ) const;
   int lookupXMLFieldNumber( DOMDocument*, const std::string& name ) const;

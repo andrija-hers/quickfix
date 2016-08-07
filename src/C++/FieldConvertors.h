@@ -825,7 +825,113 @@ struct UtcDateConvertor
   }
 };
 
+struct DateTimeConvertor
+{
+  static std::string convert( const DateTime& value )
+  throw( FieldConvertError )
+  {
+    char result[ 9 ];
+    int year, month, day;
+
+    value.getYMD( year, month, day );
+
+    integer_to_string_padded( result, 5, year, 4 );
+    integer_to_string_padded( result + 4, 3, month, 2 );
+    integer_to_string_padded( result + 6, 3, day, 2 );
+    return result;
+  }
+
+  static DateTime convert( const std::string& value )
+  throw( FieldConvertError )
+  {
+    if( value.size() != 8 ) throw FieldConvertError(value);
+
+    int i = 0;
+    for( int c=0; c<8; ++c )
+      if( !IS_DIGIT(value[i++]) ) throw FieldConvertError(value);
+
+    int year, mon, mday;
+
+    i = 0;
+
+    year = value[i++] - '0';
+    year = 10 * year + value[i++] - '0';
+    year = 10 * year + value[i++] - '0';
+    year = 10 * year + value[i++] - '0';
+
+    mon = value[i++] - '0';
+    mon = 10 * mon + value[i++] - '0';
+    if( mon < 1 || 12 < mon )
+      throw FieldConvertError(value);
+
+    mday = value[i++] - '0';
+    mday = 10 * mday + value[i++] - '0';
+    if( mday < 1 || 31 < mday )
+      throw FieldConvertError(value);
+
+    return DateTime( mday, mon, year, 0, 0, 0, 0 );
+  }
+};
+
+struct MonthYearConvertor
+{
+  static std::string convert( const DateTime& value )
+  throw( FieldConvertError )
+  {
+    char result[ 7 ];
+    int year, month, day;
+
+    value.getYMD( year, month, day );
+
+    integer_to_string_padded( result, 5, year, 4 );
+    integer_to_string_padded( result + 4, 3, month, 2 );
+    return result;
+  }
+
+  static DateTime convert( const std::string& value )
+  throw( FieldConvertError )
+  {
+    if( value.size() == 8 )
+    {
+      int i = 0;
+      for( int c=0; c<8; ++c )
+        if( !IS_DIGIT(value[i++]) ) throw FieldConvertError(value);
+
+      int year, mon;
+
+      i = 0;
+
+      year = value[i++] - '0';
+      year = 10 * year + value[i++] - '0';
+      year = 10 * year + value[i++] - '0';
+      year = 10 * year + value[i++] - '0';
+
+      mon = value[i++] - '0';
+      mon = 10 * mon + value[i++] - '0';
+      if( mon < 1 || 12 < mon )
+        throw FieldConvertError(value);
+
+      if( value[i+1] >= '0' && value[i+1] <= '3' && value[i+1] >= '0' && value[i+1] <= '9' )
+      {
+        int mday = value[i++] - '0';
+        mday = 10 * mday + value[i++] - '0';
+        if( mday < 1 || 31 < mday )
+          throw FieldConvertError(value);
+
+        return DateTime( 1, mon, year, 0, 0, 0, 0 );
+      }
+      if( value[i+1] == 'w' && value[i+2] >= '1' && value[i+2] <= '5')
+      {
+        return DateTime( 1, mon, year, 0, 0, 0, 0 );
+      }
+      throw FieldConvertError(value);
+    }
+    throw FieldConvertError(value);
+  }
+};
+
 typedef UtcDateConvertor UtcDateOnlyConvertor;
+typedef DateTimeConvertor DateOnlyConvertor;
 
 typedef StringConvertor STRING_CONVERTOR;
 typedef CharConvertor CHAR_CONVERTOR;
@@ -840,11 +946,11 @@ typedef StringConvertor MULTIPLECHARVALUE_CONVERTOR;
 typedef StringConvertor EXCHANGE_CONVERTOR;
 typedef UtcTimeStampConvertor UTCTIMESTAMP_CONVERTOR;
 typedef BoolConvertor BOOLEAN_CONVERTOR;
-typedef StringConvertor LOCALMKTDATE_CONVERTOR;
+typedef DateOnlyConvertor LOCALMKTDATE_CONVERTOR;
 typedef StringConvertor DATA_CONVERTOR;
 typedef DoubleConvertor FLOAT_CONVERTOR;
 typedef DoubleConvertor PRICEOFFSET_CONVERTOR;
-typedef StringConvertor MONTHYEAR_CONVERTOR;
+typedef MonthYearConvertor MONTHYEAR_CONVERTOR;
 typedef StringConvertor DAYOFMONTH_CONVERTOR;
 typedef UtcDateConvertor UTCDATE_CONVERTOR;
 typedef UtcTimeOnlyConvertor UTCTIMEONLY_CONVERTOR;

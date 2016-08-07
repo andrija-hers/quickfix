@@ -19,6 +19,7 @@
 
 #include "ValidationRules.h"
 #include "Field.h"
+#include "Values.h"
 
 #include <iostream>
 #include <functional>
@@ -79,15 +80,6 @@ bool ValidationRules::shouldValidate( const ValidationRules* vr)
   return vr->shouldValidate();
 }
 
-bool ValidationRules::shouldValidateFieldsOutOfOrder( const ValidationRules* vr)
-{
-  if( !ValidationRules::shouldValidate(vr) ) 
-    return false;
-  if( !vr )
-    return true;
-  return vr->shouldValidateFieldsOutOfOrder();
-}
-
 bool ValidationRules::shouldValidateLength( const ValidationRules* vr ) 
 {
   if( !ValidationRules::shouldValidate(vr) ) 
@@ -106,58 +98,115 @@ bool ValidationRules::shouldValidateChecksum( const ValidationRules* vr )
   return vr->shouldValidateChecksum();
 }
 
-bool ValidationRules::shouldCheckTag( const ValidationRules* vr, const FieldBase& field )
+bool ValidationRules::shouldCheckTag( const ValidationRules* vr, const std::string& msgType, int tag )
 {
   if( !ValidationRules::shouldValidate(vr) ) 
     return false;
   if ( !vr ) 
     return true;
-  return vr->shouldCheckTag( field );
+  return vr->shouldCheckTag( msgType, tag );
 }
 
-bool ValidationRules::shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, int tag )
+bool ValidationRules::shouldTolerateBadFormatTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
 {
   if( !ValidationRules::shouldValidate( vr ) )
     return true;
   if ( !vr )
     return false;
-  return vr->shouldTolerateMissingTag( msgType, tag );
+  return vr->shouldTolerateBadFormatTag( direction, msgType, tag );
 }
 
-bool ValidationRules::shouldTolerateMissingTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field )
+bool ValidationRules::shouldTolerateMissingTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
 {
   if( !ValidationRules::shouldValidate( vr ) )
     return true;
   if ( !vr )
     return false;
-  return vr->shouldTolerateMissingTag( msgType, field );
+  return vr->shouldTolerateMissingTag( direction, msgType, tag );
 }
 
+bool ValidationRules::shouldTolerateMissingMessageType ( const ValidationRules* vr, int direction )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr )
+    return false;
+  return vr->shouldTolerateMissingMessageType( direction );
+}
 
-bool ValidationRules::shouldTolerateTagValue ( const ValidationRules* vr, const FieldBase& field )
+bool ValidationRules::shouldTolerateUnknownTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr )
+    return false;
+  return vr->shouldTolerateUnknownTag( direction, msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateEmptyTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr )
+    return false;
+  return vr->shouldTolerateEmptyTag( direction, msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateOutOfOrderTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr )
+    return false;
+  return vr->shouldTolerateOutOfOrderTag( direction, msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateDuplicateTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
+{
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr )
+    return false;
+  return vr->shouldTolerateDuplicateTag( direction, msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateRepeatingGroupCountMismatch ( const ValidationRules* vr, int direction, const std::string& msgType, int tag ) {
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr ) 
+    return false;
+  return vr->shouldTolerateRepeatingGroupCountMismatch( direction, msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateVersionMismatch ( const ValidationRules* vr, int direction ) {
+  if( !ValidationRules::shouldValidate( vr ) )
+    return true;
+  if ( !vr ) 
+    return false;
+  return vr->shouldTolerateVersionMismatch( direction );
+}
+
+bool ValidationRules::shouldTolerateTagValue ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
 {
   if( !ValidationRules::shouldValidate( vr ) )
     return true;
   if ( !vr ) 
     return false;
-  return vr->shouldTolerateTagValue( field );
-}
-
-bool ValidationRules::shouldAllowTag ( const ValidationRules* vr, const std::string& msgType, const FieldBase& field )
-{
-  if( !ValidationRules::shouldValidate( vr ) )
-    return true;
-  if ( !vr ) 
-    return false;
-  return vr->shouldAllowTag( msgType, field );
+  return vr->shouldTolerateTagValue( direction, msgType, tag );
 }
 
 ValidationRules::ValidationRules ()
 : m_validate(true),
 m_validateBounds(true),
 m_allowedFields(),
-m_allowedEmptyFields(),
-m_allowedMissingFields()
+m_badFormatFields(),
+m_outOfBoundsFields(),
+m_missingFields(),
+m_repeatingGroupMismatches(),
+m_unknownFields(),
+m_emptyFields(),
+m_outOfOrderFields(),
+m_duplicateFields()
 {
 }
 
@@ -216,31 +265,63 @@ bool ValidationRules::shouldValidate ( ) const
   return m_validate;
 }
 
-bool ValidationRules::shouldCheckTag ( const FieldBase& field ) const
+bool ValidationRules::shouldCheckTag ( const std::string& msgType, int tag ) const
 {
-  return true;
+  return mapHasValue( m_allowedFields, msgType, tag );
 }
 
-bool ValidationRules::shouldTolerateMissingTag ( const std::string& msgType, int tag ) const
+bool ValidationRules::shouldTolerateBadFormatTag ( int direction, const std::string& msgType, int tag ) const
 {
-  return mapHasValue( m_allowedMissingFields, msgType, tag );
-  return false;
+  return standardAllowCheck( m_badFormatFields, direction, msgType, tag);
 }
 
-bool ValidationRules::shouldTolerateMissingTag ( const std::string& msgType, const FieldBase& field ) const
+bool ValidationRules::shouldTolerateMissingTag ( int direction, const std::string& msgType, int tag ) const
 {
-  return mapHasValue( m_allowedMissingFields, msgType, field.getTag() );
-  return false;
+  return standardAllowCheck( m_missingFields, direction, msgType, tag);
 }
 
-bool ValidationRules::shouldTolerateTagValue ( const FieldBase& field ) const
+bool ValidationRules::shouldTolerateMissingMessageType ( int direction ) const
 {
-  return false;
+  return standardAllowCheck( m_missingFields, direction, "?", 35 );
 }
 
-bool ValidationRules::shouldAllowTag (const std::string& msgType, const FieldBase& field) const
+bool ValidationRules::shouldTolerateVersionMismatch ( int direction ) const
 {
-  return mapHasValue( m_allowedFields, msgType, field.getTag() );
+  return standardAllowCheck( m_versionMismatches, direction, "?", -1 );
+}
+
+bool ValidationRules::shouldTolerateEmptyTag ( int direction, const std::string& msgType, int tag ) const
+{
+  return standardAllowCheck( m_emptyFields, direction, msgType, tag);
+}
+
+bool ValidationRules::shouldTolerateOutOfOrderTag ( int direction, const std::string& msgType, int tag ) const
+{
+  if (!m_validateFieldsOutOfOrder)
+  {
+    return true;
+  }
+  return standardAllowCheck( m_outOfOrderFields, direction, msgType, tag);
+}
+
+bool ValidationRules::shouldTolerateDuplicateTag ( int direction, const std::string& msgType, int tag ) const
+{
+  return standardAllowCheck( m_duplicateFields, direction, msgType, tag);
+}
+
+bool ValidationRules::shouldTolerateUnknownTag ( int direction, const std::string& msgType, int tag ) const
+{
+  return standardAllowCheck( m_unknownFields, direction, msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateTagValue ( int direction, const std::string& msgType, int tag ) const
+{
+  return standardAllowCheck( m_outOfBoundsFields, direction, msgType, tag );
+}
+
+bool ValidationRules::shouldTolerateRepeatingGroupCountMismatch ( int direction, const std::string& msgType, int tag ) const
+{
+  return standardAllowCheck( m_repeatingGroupMismatches, direction, msgType, tag );
 }
 
 bool ValidationRules::shouldValidateLength ( ) const 
@@ -251,11 +332,6 @@ bool ValidationRules::shouldValidateLength ( ) const
 bool ValidationRules::shouldValidateChecksum ( ) const
 {
   return m_validateChecksum;
-}
-
-bool ValidationRules::shouldValidateFieldsOutOfOrder ( ) const
-{
-  return m_validateFieldsOutOfOrder;
 }
 
 bool ValidationRules::shouldValidateFieldsHaveValues ( ) const
@@ -278,6 +354,29 @@ void ValidationRules::addValidationRule ( const std::string& validationrulesstr 
   ValidationRule( validationrulesstr, this );
 }
 
+bool ValidationRules::standardAllowCheck( const ValidationRules::DirectionAwareMsgTypeMap& dmtm, int direction, const std::string& msgType, int tag ) const
+{
+  if( mapHasValue( m_allowedFields, msgType, tag ) )
+    return true;
+  return dmtm.shouldAllowTag( direction, msgType, tag );
+}
+
+void ValidationRules::DirectionAwareMsgTypeMap::safeAddMsgTypeValue( int inbound, const std::string& msgType, int tag )
+{
+  if( inbound == 0 )
+    ValidationRules::safeAddMsgTypeValue( m_outboundFields, msgType, tag );
+  if( inbound == 1 )
+    ValidationRules::safeAddMsgTypeValue( m_inboundFields, msgType, tag );
+}
+
+bool ValidationRules::DirectionAwareMsgTypeMap::shouldAllowTag( int direction, const std::string& msgType, int tag ) const
+{
+  if( direction == INCOMING_DIRECTION )
+    return ValidationRules::mapHasValue( m_inboundFields, msgType, tag );
+  if( direction == OUTGOING_DIRECTION )
+    return ValidationRules::mapHasValue( m_outboundFields, msgType, tag );
+  return false;
+}
 
 ValidationRules::AllowedFieldGroup::AllowedFieldGroup( const std::string& descriptor, ValidationRules* vrptr )
 {
@@ -298,17 +397,31 @@ void ValidationRules::AllowedFieldGroup::onGroupElement ( const std::string& str
 ValidationRules::ValidationRule::ValidationRule( const std::string& descriptor, ValidationRules* vrptr) 
 : inbound(-1),
 rejectType(-1),
-messageType(),
+messageType("?"),
 tag(-1),
 parseSteps(0)
 {
   split( descriptor, "-", bind( &ValidationRule::onRuleElement, this, std::placeholders::_1 ) );
   if( inbound != 0 && inbound != 1 )
     return;
+  if ( rejectType == 104 )
+    vrptr->m_versionMismatches.safeAddMsgTypeValue( inbound, messageType, tag );
+  if ( rejectType == 7 )
+    vrptr->m_duplicateFields.safeAddMsgTypeValue( inbound, messageType, tag );
+  if ( rejectType == 6 )
+    vrptr->m_outOfOrderFields.safeAddMsgTypeValue( inbound, messageType, tag );
+  if ( rejectType == 5 )
+    vrptr->m_emptyFields.safeAddMsgTypeValue( inbound, messageType, tag );
+  if ( rejectType == 4 )
+    vrptr->m_unknownFields.safeAddMsgTypeValue( inbound, messageType, tag );
+  if ( rejectType == 3 )
+    vrptr->m_repeatingGroupMismatches.safeAddMsgTypeValue( inbound, messageType, tag );
   if ( rejectType == 2 )
-    vrptr->safeAddMsgTypeValue( vrptr->m_allowedMissingFields, messageType, tag );   
-  if ( rejectType == 0  || rejectType == 1  || rejectType == 4  || rejectType == 5 )
-    vrptr->safeAddMsgTypeValue( vrptr->m_allowedFields, messageType, tag );   
+    vrptr->m_missingFields.safeAddMsgTypeValue( inbound, messageType, tag );
+  if ( rejectType == 1 ) 
+    vrptr->m_outOfBoundsFields.safeAddMsgTypeValue( inbound, messageType, tag );
+  if ( rejectType == 0 )
+    vrptr->m_badFormatFields.safeAddMsgTypeValue( inbound, messageType, tag );
 }
 
 void ValidationRules::ValidationRule::onRuleElement( const std::string& string )

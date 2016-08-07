@@ -233,16 +233,16 @@ TEST_FIXTURE(checkValidTagNumberFixture, checkValidTagNumber)
   message.setField( TooHigh( "value" ) );
   ValidationRules vr;
   vr.setValidateUserDefinedFields(false);
-  CHECK_THROW( object.validate( message ), InvalidTagNumber );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), InvalidTagNumber );
 
   object.addField( 501 );
   object.addMsgField( MsgType_TestRequest, 501 );
-  object.validate( message );
+  object.validate( FIX::INCOMING_DIRECTION, message );
 
   message.setField( FIELD::UserMin, "value" );
-  CHECK_THROW( object.validate( message ), InvalidTagNumber );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), InvalidTagNumber );
 
-  object.validate( message, &vr );
+  object.validate( FIX::INCOMING_DIRECTION, message, &vr );
 }
 
 TEST(checkHasValue)
@@ -250,10 +250,10 @@ TEST(checkHasValue)
   DataDictionary object;
   ValidationRules vr;
   vr.setShouldValidate(false);
-  Message testReqID( "8=FIX.4.2\0019=12\00135=1\001112=\00110=007\001", &vr );
+  Message testReqID( FIX::OUTGOING_DIRECTION, "8=FIX.4.2\0019=12\00135=1\001112=\00110=007\001", &vr );
   FIX42::TestRequest message( testReqID );
 
-  CHECK_THROW( object.validate( message ), NoTagValue );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), NoTagValue );
 }
 
 struct checkIsInMessageFixture
@@ -279,10 +279,10 @@ TEST_FIXTURE(checkIsInMessageFixture, checkIsInMessage)
   TestReqID testReqID( "1" );
 
   FIX40::TestRequest message( testReqID );
-  object.validate( message );
+  object.validate( FIX::INCOMING_DIRECTION, message );
 
   message.setField( Symbol( "MSFT" ) );
-  CHECK_THROW( object.validate( message ), TagNotDefinedForMessage );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), TagNotDefinedForMessage );
 }
 
 struct checkHasRequiredFixture
@@ -310,17 +310,17 @@ struct checkHasRequiredFixture
 TEST_FIXTURE(checkHasRequiredFixture, checkHasRequired)
 {
   FIX40::TestRequest message;
-  CHECK_THROW( object.validate( message ), RequiredTagMissing );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), RequiredTagMissing );
 
   message.getHeader().setField( SenderCompID( "SENDER" ) );
-  CHECK_THROW( object.validate( message ), RequiredTagMissing );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), RequiredTagMissing );
 
   message.setField( TestReqID( "1" ) );
-  object.validate( message );
+  object.validate( FIX::INCOMING_DIRECTION, message );
 
   message.getHeader().removeField( FIELD::SenderCompID );
   message.setField( SenderCompID( "SENDER" ) );
-  CHECK_THROW( object.validate( message ), RequiredTagMissing );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), RequiredTagMissing );
 }
 
 struct checkValidFormatFixture
@@ -345,7 +345,7 @@ TEST_FIXTURE( checkValidFormatFixture, checkValidFormat )
 {
   FIX40::TestRequest message;
   message.setField( TestReqID( "+200" ) );
-  CHECK_THROW( object.validate( message ), IncorrectDataFormat );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), IncorrectDataFormat );
 }
 
 struct checkValueFixture
@@ -378,17 +378,17 @@ TEST_FIXTURE( checkValueFixture, checkValue )
   DataDictionary object;
   FIX40::NewOrderSingle message;
   message.setField( OrdType( '1' ) );
-  object.validate( message );
+  object.validate( FIX::INCOMING_DIRECTION, message );
 
   message.setField( OrdType( '2' ) );
-  object.validate( message );
+  object.validate( FIX::INCOMING_DIRECTION, message );
 
   message.setField( OrdType( '1' ) );
   message.setField( OrderRestrictions("1 2 3") );
-  object.validate( message );
+  object.validate( FIX::INCOMING_DIRECTION, message );
 
   message.setField( OrderRestrictions("1 4 3") );
-  object.validate( message );
+  object.validate( FIX::INCOMING_DIRECTION, message );
 }
 
 TEST( checkRepeatedTag )
@@ -397,7 +397,7 @@ TEST( checkRepeatedTag )
   FIX40::NewOrderSingle message;
   message.setField( OrdType('1') );
   message.setField( OrdType('1'), false );
-  CHECK_THROW( object.validate(message), RepeatedTag );
+  CHECK_THROW( object.validate(FIX::INCOMING_DIRECTION, message), RepeatedTag );
 }
 
 struct checkGroupCountFixture
@@ -427,7 +427,7 @@ TEST_FIXTURE( checkGroupCountFixture, checkGroupCount )
   group.setField( AllocAccount("account") );
   message.addGroup( group );
   message.set( NoAllocs(2) );
-  CHECK_THROW( object.validate( message ), RepeatingGroupCountMismatch );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), RepeatingGroupCountMismatch );
 }
 
 TEST( checkGroupRequiredFields )
@@ -436,14 +436,14 @@ TEST( checkGroupRequiredFields )
   FIX44::NewOrderList newOrderList;
   ValidationRules vr;
   vr.setShouldValidate(false);
-  newOrderList.setString("8=FIX.4.49=18635=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=111=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=119", &vr, &object);
-  object.validate( newOrderList );
+  newOrderList.setString(FIX::OUTGOING_DIRECTION, "8=FIX.4.49=18635=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=111=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=119", &vr, &object);
+  object.validate( FIX::INCOMING_DIRECTION, newOrderList );
 
-  newOrderList.setString("8=FIX.4.49=15835=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=036", &vr, &object);
-  CHECK_THROW( object.validate( newOrderList ), RequiredTagMissing );
+  newOrderList.setString(FIX::OUTGOING_DIRECTION, "8=FIX.4.49=15835=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=163=021=381=060=20050225-16:54:3238=1000040=115=USD10=036", &vr, &object);
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, newOrderList ), RequiredTagMissing );
 
-  newOrderList.setString("8=FIX.4.49=26935=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=211=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD11=SE104555=MSFT67=163=021=381=060=20050225-16:54:3238=1000040=115=USD47=A10=109", &vr, &object);
-  CHECK_THROW( object.validate( newOrderList ), RequiredTagMissing );
+  newOrderList.setString(FIX::OUTGOING_DIRECTION, "8=FIX.4.49=26935=E49=FIXTEST56=TW128=SS134=252=20050225-16:54:3266=WMListOrID000000362394=368=173=211=SE102354=155=IBM67=163=021=381=060=20050225-16:54:3238=1000040=115=USD11=SE104555=MSFT67=163=021=381=060=20050225-16:54:3238=1000040=115=USD47=A10=109", &vr, &object);
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, newOrderList ), RequiredTagMissing );
 
   FIX44::MarketDataRequest marketDataRequest(
     MDReqID("1"),
@@ -470,11 +470,11 @@ TEST( checkGroupRequiredFields )
   noMDEntryTypes.set( MDEntryType( MDEntryType_TRADE ) );
   marketDataRequest.addGroup( noMDEntryTypes );
 
-  object.validate( marketDataRequest );
+  object.validate( FIX::INCOMING_DIRECTION, marketDataRequest );
 
   noMDEntryTypes.removeField( FIELD::MDEntryType );
   marketDataRequest.addGroup( noMDEntryTypes );
-  CHECK_THROW( object.validate( marketDataRequest ), RequiredTagMissing );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, marketDataRequest ), RequiredTagMissing );
 
   FIX44::MarketDataSnapshotFullRefresh md;
   md.set( MDReqID("1") );
@@ -492,8 +492,8 @@ TEST( checkGroupRequiredFields )
   entry.set( MDEntrySize( 300 ) );
   md.addGroup( entry );
 
-  Message message( md.toString(), NULL );
-  object.validate( message );
+  Message message( FIX::INCOMING_DIRECTION, md.toString(), NULL );
+  object.validate( FIX::INCOMING_DIRECTION, message );
   //object.validate( md );
 }
 

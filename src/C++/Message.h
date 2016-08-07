@@ -78,16 +78,17 @@ public:
   Message();
 
   /// Construct a message from a string
-  Message( const std::string& string, const ValidationRules *validationRules = NULL )
+  Message( int direction, const std::string& string, const ValidationRules *validationRules = NULL )
   throw( Exception );
 
   /// Construct a message from a string using a data dictionary
-  Message( const std::string& string, const FIX::DataDictionary& dataDictionary,
+  Message( int direction, const std::string& string,
+           const FIX::DataDictionary& dataDictionary,
            const ValidationRules* validationRules )
   throw( Exception );
 
   /// Construct a message from a string using a session and application data dictionary
-  Message( const std::string& string, const FIX::DataDictionary& sessionDataDictionary,
+  Message( int direction, const std::string& string, const FIX::DataDictionary& sessionDataDictionary,
            const FIX::DataDictionary& applicationDataDictionary, const ValidationRules* validationRules )
   throw( Exception );
 
@@ -162,19 +163,19 @@ public:
    * that is passed in.  It will return true on success and false
    * on failure.
    */
-  void setString( const std::string& string )
+  void setString( int direction, const std::string& string )
   throw( Exception )
-  { setString(string); }
-  void setString( const std::string& string, const ValidationRules* validationRules )
+  { setString(direction, string); }
+  void setString( int direction, const std::string& string, const ValidationRules* validationRules )
   throw( Exception )
-  { setString(string, validationRules, 0); }
-  void setString( const std::string& string,
+  { setString(direction, string, validationRules, 0); }
+  void setString( int direction, const std::string& string,
                   const ValidationRules *validationRules,
                   const FIX::DataDictionary* pDataDictionary )
   throw( Exception )
-  { setString(string, validationRules, pDataDictionary, pDataDictionary); }
+  { setString(direction, string, validationRules, pDataDictionary, pDataDictionary); }
 
-  void setString( const std::string& string,
+  void setString( int direction, const std::string& string,
                   const ValidationRules *validationRules,
                   const FIX::DataDictionary* pSessionDataDictionary,
                   const FIX::DataDictionary* pApplicationDataDictionary )
@@ -334,6 +335,7 @@ private:
     return false;
   }
 
+  const std::string& safeMsgType () const;
   void validate( const ValidationRules* vrptr );
   std::string toXMLFields(const FieldMap& fields, int space) const;
 
