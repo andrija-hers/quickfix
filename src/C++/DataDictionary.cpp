@@ -171,7 +171,7 @@ void DataDictionary::iterate( int direction, const FieldMap& map, const MsgType&
       checkValue( direction, msgType, field, vrptr );
     }
 
-    if ( m_beginString.getValue().length() && shouldCheckTag( msgType, field, vrptr ) )
+    if ( m_beginString.getValue().length() && shouldCheckTag( msgType, field ) )
     {
       checkValidTagNumber( direction, msgType, field, vrptr );
       if ( !Message::isHeaderField( field, this )

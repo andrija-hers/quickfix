@@ -102,7 +102,7 @@ struct RuntimeError : public Exception
 struct InvalidTagNumber : public Exception
 {
   InvalidTagNumber( int f = 0, const std::string& what = "" )
-    : Exception( "Invalid tag number", what, 4 ),
+    : Exception( "Unknown Field", what, 4 ),
                  field( f ) {}
   int field;
 };
@@ -111,7 +111,7 @@ struct InvalidTagNumber : public Exception
 struct RequiredTagMissing : public Exception
 {
   RequiredTagMissing( int f = 0, const std::string& what = "" )
-    : Exception( "Required tag missing", what, 2 ),
+    : Exception( "Missing required Field", what, 2 ),
                  field( f ) {}
   int field;
 };
@@ -129,7 +129,7 @@ struct TagNotDefinedForMessage : public Exception
 struct NoTagValue : public Exception
 {
   NoTagValue( int f = 0, const std::string& what = "" )
-    : Exception( "Tag specified without a value", what, 5 ),
+    : Exception( "Field with no value", what, 5 ),
                  field( f ) {}
   int field;
 };
@@ -138,7 +138,7 @@ struct NoTagValue : public Exception
 struct IncorrectTagValue : public Exception
 {
   IncorrectTagValue( int f = 0, const std::string& what = "" )
-    : Exception( "Value is incorrect (out of range) for this tag", what, 1 ),
+    : Exception( "Value out of bounds for Field", what, 1 ),
                  field( f ) {}
   int field;
 };
@@ -147,7 +147,7 @@ struct IncorrectTagValue : public Exception
 struct IncorrectDataFormat : public Exception
 {
   IncorrectDataFormat( int f = 0, const std::string& what = "" )
-    : Exception( "Incorrect data format for value", what, 0 ),
+    : Exception( "Bad format for Field", what, 0 ),
                  field( f ) {}
   int field;
 };
@@ -163,7 +163,7 @@ struct IncorrectMessageStructure : public Exception
 struct DuplicateFieldNumber : public Exception
 {
   DuplicateFieldNumber( const std::string& what = "" )
-    : Exception( "Duplicate field number", what, 100 ) {}
+    : Exception( "Field appears more than once", what, 100 ) {}
 };
 
 /// Not a known message type
@@ -191,7 +191,7 @@ struct UnsupportedVersion : public Exception
 struct TagOutOfOrder : public Exception
 {
   TagOutOfOrder( int f = 0, const std::string& what = "" )
-    : Exception( "Tag specified out of required order", what, 6 ),
+    : Exception( "Field out of order", what, 6 ),
                  field( f ) {}
   int field;
 };

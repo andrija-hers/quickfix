@@ -267,7 +267,7 @@ bool ValidationRules::shouldValidate ( ) const
 
 bool ValidationRules::shouldCheckTag ( const std::string& msgType, int tag ) const
 {
-  return mapHasValue( m_allowedFields, msgType, tag );
+  return !mapHasValue( m_allowedFields, msgType, tag );
 }
 
 bool ValidationRules::shouldTolerateBadFormatTag ( int direction, const std::string& msgType, int tag ) const
@@ -316,6 +316,9 @@ bool ValidationRules::shouldTolerateUnknownTag ( int direction, const std::strin
 
 bool ValidationRules::shouldTolerateTagValue ( int direction, const std::string& msgType, int tag ) const
 {
+  if (!m_validateBounds) {
+    return true;
+  }
   return standardAllowCheck( m_outOfBoundsFields, direction, msgType, tag );
 }
 

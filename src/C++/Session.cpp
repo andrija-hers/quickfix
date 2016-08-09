@@ -496,7 +496,7 @@ throw( FIX::Exception )
     else
     {
       sessionDataDictionary.validate( OUTGOING_DIRECTION, *msg, &m_validationRules );
-      std::cout << "validation ok for messageFromString" << std::endl;
+      //std::cout << "validation ok for messageFromString" << std::endl;
     }
   }
   return msg;

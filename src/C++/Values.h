@@ -42,12 +42,12 @@ namespace FIX
   //const char SessionRejectReason_UNDEFINED_TAG_TEXT[] = "Undefined Tag";
   const char SessionRejectReason_TAG_SPECIFIED_WITHOUT_A_VALUE_TEXT[] = "Field with no value";
   const char SessionRejectReason_VALUE_IS_INCORRECT_TEXT[] = "Value out of bounds for Field";
-  const char SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE_TEXT[] = "Bad data format for Field";
+  const char SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE_TEXT[] = "Bad format for Field";
   const char SessionRejectReason_DECRYPTION_PROBLEM_TEXT[] = "Decryption problem";
   const char SessionRejectReason_SIGNATURE_PROBLEM_TEXT[] = "Signature problem";
   const char SessionRejectReason_COMPID_PROBLEM_TEXT[] = "CompID problem";
   const char SessionRejectReason_SENDINGTIME_ACCURACY_PROBLEM_TEXT[] = "SendingTime accuracy problem";
-  const char SessionRejectReason_INVALID_MSGTYPE_TEXT[] = "Invalid MsgType";
+  const char SessionRejectReason_INVALID_MSGTYPE_TEXT[] = "Invalid Message Type";
   const char SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE_TEXT[] = "Field appears more than once";
   const char SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER_TEXT[] = "Field out of order";
   const char SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP_TEXT[] = "Incorrect NumInGroup count for repeating group";
