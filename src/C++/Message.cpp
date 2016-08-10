@@ -48,7 +48,7 @@ Message::Message( int direction, const std::string& string,
 throw( Exception )
 : m_validStructure( true )
 {
-  setString( direction, string, validationRules, &dataDictionary, NULL );
+  setString( direction, string, validationRules, &dataDictionary, &dataDictionary );
 }
 
 Message::Message( int direction, const std::string& string,
