@@ -224,6 +224,7 @@ struct checkValidTagNumberFixture
   }
 
   DataDictionary object;
+  ValidationRules vr;
 };
 
 TEST_FIXTURE(checkValidTagNumberFixture, checkValidTagNumber)
@@ -231,17 +232,17 @@ TEST_FIXTURE(checkValidTagNumberFixture, checkValidTagNumber)
   TestReqID testReqID( "1" );
   FIX40::TestRequest message( testReqID );
   message.setField( TooHigh( "value" ) );
-  ValidationRules vr;
-  vr.setValidateUserDefinedFields(false);
-  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), InvalidTagNumber );
+  vr.setValidateUserDefinedFields(true);
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message, &vr ), InvalidTagNumber );
 
   object.addField( 501 );
   object.addMsgField( MsgType_TestRequest, 501 );
-  object.validate( FIX::INCOMING_DIRECTION, message );
+  object.validate( FIX::INCOMING_DIRECTION, message, &vr );
 
   message.setField( FIELD::UserMin, "value" );
-  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message ), InvalidTagNumber );
+  CHECK_THROW( object.validate( FIX::INCOMING_DIRECTION, message, &vr ), InvalidTagNumber );
 
+  vr.setValidateUserDefinedFields(false);
   object.validate( FIX::INCOMING_DIRECTION, message, &vr );
 }
 
@@ -493,8 +494,7 @@ TEST( checkGroupRequiredFields )
   md.addGroup( entry );
 
   Message message( FIX::INCOMING_DIRECTION, md.toString(), NULL );
-  object.validate( FIX::INCOMING_DIRECTION, message );
-  //object.validate( md );
+  object.validate( FIX::INCOMING_DIRECTION, message, &vr );
 }
 
 TEST( readFromFile )

@@ -33,7 +33,7 @@ class ValidationRules
     static bool shouldValidate( const ValidationRules* vr );
     static bool shouldValidateLength( const ValidationRules* vr );
     static bool shouldValidateChecksum( const ValidationRules* vr );
-    static bool shouldCheckTag( const ValidationRules* vr, const std::string& msgType, int tag );
+    static bool shouldValidateUserDefinedFields( const ValidationRules* vr );
     static bool shouldTolerateBadFormatTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
     static bool shouldTolerateMissingTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag );
     static bool shouldTolerateMissingMessageType ( const ValidationRules* vr, int direction );
@@ -59,7 +59,6 @@ class ValidationRules
     void setValidateUserDefinedFields ( bool validateuserdefinedfields );
 
     bool shouldValidate ( ) const;
-    bool shouldCheckTag ( const std::string& msgType, int tag ) const;
     bool shouldTolerateBadFormatTag ( int direction, const std::string& msgType, int tag ) const;
     bool shouldTolerateMissingTag ( int direction, const std::string& msgType, int tag ) const;
     bool shouldTolerateMissingMessageType ( int direction ) const;

@@ -98,13 +98,13 @@ bool ValidationRules::shouldValidateChecksum( const ValidationRules* vr )
   return vr->shouldValidateChecksum();
 }
 
-bool ValidationRules::shouldCheckTag( const ValidationRules* vr, const std::string& msgType, int tag )
+bool ValidationRules::shouldValidateUserDefinedFields( const ValidationRules* vr )
 {
   if( !ValidationRules::shouldValidate(vr) ) 
     return false;
   if ( !vr ) 
-    return true;
-  return vr->shouldCheckTag( msgType, tag );
+    return false;
+  return vr->shouldValidateUserDefinedFields( );
 }
 
 bool ValidationRules::shouldTolerateBadFormatTag ( const ValidationRules* vr, int direction, const std::string& msgType, int tag )
@@ -265,11 +265,6 @@ bool ValidationRules::shouldValidate ( ) const
   return m_validate;
 }
 
-bool ValidationRules::shouldCheckTag ( const std::string& msgType, int tag ) const
-{
-  return !mapHasValue( m_allowedFields, msgType, tag );
-}
-
 bool ValidationRules::shouldTolerateBadFormatTag ( int direction, const std::string& msgType, int tag ) const
 {
   return standardAllowCheck( m_badFormatFields, direction, msgType, tag);
@@ -311,6 +306,9 @@ bool ValidationRules::shouldTolerateDuplicateTag ( int direction, const std::str
 
 bool ValidationRules::shouldTolerateUnknownTag ( int direction, const std::string& msgType, int tag ) const
 {
+  if (tag >= FIELD::UserMin) {
+    return !m_validateUserDefinedFields;
+  }
   return standardAllowCheck( m_unknownFields, direction, msgType, tag );
 }
 

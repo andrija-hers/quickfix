@@ -277,10 +277,10 @@ private:
   throw( InvalidMessageType );
 
   /// If we need to check for the tag in the dictionary
-  bool shouldCheckTag( const std::string& msgType, const FieldBase& field ) const
+  bool shouldCheckTag( const std::string& msgType, const FieldBase& field, const ValidationRules* vrptr ) const
   {
     if( field.getTag() >= FIELD::UserMin )
-      return false;
+      return ValidationRules::shouldValidateUserDefinedFields( vrptr );
     else
       return true;
   }
