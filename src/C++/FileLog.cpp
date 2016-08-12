@@ -187,7 +187,7 @@ void FileLog::backup()
     std::stringstream eventFileName;
  
     messagesFileName << m_fullBackupPrefix << "messages.backup." << ++i << ".log";
-    rejectsFileName << m_fullBackupPrefix << "rejects.backup." << ++i << ".log";
+    rejectsFileName << m_fullBackupPrefix << "rejects.backup." << i << ".log";
     eventFileName << m_fullBackupPrefix << "event.backup." << i << ".log";
     FILE* messagesLogFile = file_fopen( messagesFileName.str().c_str(), "r" );
     FILE* rejectsLogFile = file_fopen( rejectsFileName.str().c_str(), "r" );

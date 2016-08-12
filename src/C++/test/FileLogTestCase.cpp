@@ -49,6 +49,13 @@ void deleteLogSession( std::string sender, std::string target )
   file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".messages.backup.3.log" ).c_str() );
   file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".messages.backup.4.log" ).c_str() );
   file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".messages.backup.5.log" ).c_str() );
+
+  file_unlink( ( "log/FIX.4.2-" + sender + "-" + target + ".rejects.current.log" ).c_str() );
+  file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".rejects.backup.1.log" ).c_str() );
+  file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".rejects.backup.2.log" ).c_str() );
+  file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".rejects.backup.3.log" ).c_str() );
+  file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".rejects.backup.4.log" ).c_str() );
+  file_unlink( ( "log/backup/FIX.4.2-" + sender + "-" + target + ".rejects.backup.5.log" ).c_str() );
 }
 
 struct generateFileNameFixture
