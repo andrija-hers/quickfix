@@ -169,28 +169,34 @@ TEST(setString)
   object.setString( FIX::OUTGOING_DIRECTION, strGood );
   object.setString( FIX::OUTGOING_DIRECTION, std::string(strNull, 68) );
   FIX::ValidationRules vr;
+  vr.setShouldValidate(false);
   object.setString( FIX::OUTGOING_DIRECTION, strNoLengthAndChk, &vr );
 
+  vr.setShouldValidate(true);
+  vr.setValidateFieldsOutOfOrder(true);
+  vr.setValidateLength(true);
+  vr.setValidateChecksum(true);
+  vr.setValidateBounds(true);
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strTrailingCharacter ), InvalidMessage );
+    strTrailingCharacter, &vr ), InvalidMessage );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strNoChk ), InvalidMessage );
+    strNoChk, &vr ), FieldNotFound );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strBadChk ), InvalidMessage );
+    strBadChk, &vr ), InvalidMessage );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strBad ), InvalidMessage );
+    strBad, &vr ), InvalidMessage );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strBadHeaderOrder ), InvalidMessage );
+    strBadHeaderOrder, &vr ), TagOutOfOrder );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strNoLengthAndChk ), InvalidMessage );
+    strNoLengthAndChk, &vr ), TagOutOfOrder );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strBadLength ), InvalidMessage );
+    strBadLength, &vr ), IncorrectDataFormat );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strBadChecksum ), InvalidMessage );
+    strBadChecksum, &vr ), IncorrectDataFormat );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strJunk ), InvalidMessage );
+    strJunk, &vr ), InvalidMessage );
   CHECK_THROW( object.setString( FIX::OUTGOING_DIRECTION,
-    strEmpty ), InvalidMessage );
+    strEmpty, &vr ), FieldNotFound );
 
   DataDictionary dataDictionary;
   dataDictionary.addHeaderField( 11, false );

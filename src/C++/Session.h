@@ -290,21 +290,21 @@ private:
   void fromCallback( const MsgType& msgType, const Message& msg,
                      const SessionID& sessionID );
 
-  void doBadTime( const Message& msg );
-  void doBadCompID( const Message& msg );
-  bool doPossDup( const Message& msg );
-  bool doTargetTooLow( const Message& msg );
-  void doTargetTooHigh( const Message& msg );
-  void nextQueued( const UtcTimeStamp& timeStamp );
-  bool nextQueued( int num, const UtcTimeStamp& timeStamp );
+  void doBadTime( int direction, const Message& msg );
+  void doBadCompID( int direction, const Message& msg );
+  bool doPossDup( int direction, const Message& msg );
+  bool doTargetTooLow( int direction, const Message& msg );
+  void doTargetTooHigh( int direction, const Message& msg );
+  void nextQueued( const UtcTimeStamp& timeStamp, int direction );
+  bool nextQueued( int num, const UtcTimeStamp& timeStamp, int direction );
 
-  void nextLogon( const Message&, const UtcTimeStamp& timeStamp );
-  void nextHeartbeat( const Message&, const UtcTimeStamp& timeStamp );
-  void nextTestRequest( const Message&, const UtcTimeStamp& timeStamp );
-  void nextLogout( const Message&, const UtcTimeStamp& timeStamp );
-  void nextReject( const Message&, const UtcTimeStamp& timeStamp );
-  void nextSequenceReset( const Message&, const UtcTimeStamp& timeStamp );
-  void nextResendRequest( const Message&, const UtcTimeStamp& timeStamp );
+  void nextLogon( int direction, const Message&, const UtcTimeStamp& timeStamp );
+  void nextHeartbeat( int direction, const Message&, const UtcTimeStamp& timeStamp );
+  void nextTestRequest( int direction, const Message&, const UtcTimeStamp& timeStamp );
+  void nextLogout( int direction, const Message&, const UtcTimeStamp& timeStamp );
+  void nextReject( int direction, const Message&, const UtcTimeStamp& timeStamp );
+  void nextSequenceReset( int direction, const Message&, const UtcTimeStamp& timeStamp );
+  void nextResendRequest( int direction, const Message&, const UtcTimeStamp& timeStamp );
 
   void generateLogon();
   void generateLogon( const Message& );
@@ -323,7 +323,7 @@ private:
   void populateRejectReason( Message&, int field, const std::string& );
   void populateRejectReason( Message&, const std::string& );
 
-  bool verify( const Message& msg,
+  bool verify( const Message& msg, int direction, 
                bool checkTooHigh = true, bool checkTooLow = true );
 
   bool set( int s, const Message& m );

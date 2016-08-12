@@ -165,7 +165,7 @@ public:
    */
   void setString( int direction, const std::string& string )
   throw( Exception )
-  { setString(direction, string); }
+  { setString(direction, string, 0); }
   void setString( int direction, const std::string& string, const ValidationRules* validationRules )
   throw( Exception )
   { setString(direction, string, validationRules, 0); }

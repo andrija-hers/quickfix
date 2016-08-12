@@ -739,7 +739,6 @@ throw( RepeatingGroupCountMismatch )
       ! ValidationRules::shouldTolerateRepeatingGroupCountMismatch( vrptr, direction, msgType, field.getTag() )
       )
     {
-      std::cout << fieldMap.groupCount(fieldNum) << " != " << field.getString() << std::endl;
       throw RepeatingGroupCountMismatch(fieldNum, IntConvertor::convert(fieldNum) );
     }
   }

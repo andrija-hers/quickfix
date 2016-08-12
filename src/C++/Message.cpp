@@ -290,7 +290,7 @@ throw( Exception )
     FieldBase field = extractField( string, pos, pSessionDataDictionary, pApplicationDataDictionary );
     if ( count < 3 &&
          headerOrder[ count++ ] != field.getTag() && 
-         ValidationRules::shouldTolerateOutOfOrderTag(validationRules, OUTGOING_DIRECTION, safeMsgType(), field.getTag() ) 
+         !ValidationRules::shouldTolerateOutOfOrderTag(validationRules, OUTGOING_DIRECTION, safeMsgType(), field.getTag() ) 
  )
     {
       //throw InvalidMessage("Header fields out of order.");
