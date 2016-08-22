@@ -79,39 +79,6 @@ Session* SessionFactory::create( const SessionID& sessionID,
   if( settings.has(USE_LOCAL_TIME) )
     useLocalTime = settings.getBool( USE_LOCAL_TIME );
 
-  int startDay = -1;
-  int endDay = -1;
-  try
-  {
-    startDay = settings.getDay( START_DAY );
-    endDay = settings.getDay( END_DAY );
-  }
-  catch( ConfigError & ) {}
-  catch( FieldConvertError & e ) { throw ConfigError( e.what() ); }
-
-  UtcTimeOnly startTime;
-  UtcTimeOnly endTime;
-  try
-  {
-    startTime = UtcTimeOnlyConvertor::convert
-                ( settings.getString( START_TIME ) );
-    endTime = UtcTimeOnlyConvertor::convert
-              ( settings.getString( END_TIME ) );
-  }
-  catch ( FieldConvertError & e ) { throw ConfigError( e.what() ); }
-
-  TimeRange utcSessionTime
-    ( startTime, endTime, startDay, endDay );
-  TimeRange localSessionTime
-    ( LocalTimeOnly(startTime.getHour(), startTime.getMinute(), startTime.getSecond()),
-      LocalTimeOnly(endTime.getHour(), endTime.getMinute(), endTime.getSecond()),
-      startDay, endDay );
-  TimeRange sessionTimeRange = useLocalTime ? localSessionTime : utcSessionTime;
-
-  if( startDay >= 0 && endDay < 0 )
-    throw ConfigError( "StartDay used without EndDay" );
-  if( endDay >= 0 && startDay < 0 )
-    throw ConfigError( "EndDay used without StartDay" );
 
   HeartBtInt heartBtInt( 0 );
   if ( connectionType == "initiator" )
@@ -120,53 +87,21 @@ Session* SessionFactory::create( const SessionID& sessionID,
     if ( heartBtInt <= 0 ) throw ConfigError( "Heartbeat must be greater than zero" );
   }
 
-  std::auto_ptr<Session> pSession;
+  ISchedule* pSchedule = 0;
+
+  if ( settings.has( SCHEDULE ) )
+    pSchedule = createSchedule( settings.getString( SCHEDULE ) );
+  else
+    pSchedule = createSchedule(  );
+
+
+
+  std::unique_ptr<Session> pSession;
   pSession.reset( new Session( m_application, m_messageStoreFactory,
-    sessionID, dataDictionaryProvider, sessionTimeRange,
+    sessionID, dataDictionaryProvider, pSchedule,
     heartBtInt, m_pLogFactory ) );
 
   pSession->setSenderDefaultApplVerID(defaultApplVerID);
-
-  int logonDay = startDay;
-  int logoutDay = endDay;
-  try
-  {
-    logonDay = settings.getDay( LOGON_DAY );
-    logoutDay = settings.getDay( LOGOUT_DAY );
-  }
-  catch( ConfigError & ) {}
-  catch( FieldConvertError & e ) { throw ConfigError( e.what() ); }
-
-  UtcTimeOnly logonTime( startTime );
-  UtcTimeOnly logoutTime( endTime );
-  try
-  {
-    logonTime = UtcTimeOnlyConvertor::convert
-                ( settings.getString( LOGON_TIME ) );
-  }
-  catch( ConfigError & ) {}
-  catch( FieldConvertError & e ) { throw ConfigError( e.what() ); }
-  try
-  {
-    logoutTime = UtcTimeOnlyConvertor::convert
-              ( settings.getString( LOGOUT_TIME ) );
-  }
-  catch( ConfigError & ) {}
-  catch( FieldConvertError & e ) { throw ConfigError( e.what() ); }
-
-  TimeRange utcLogonTime
-    ( logonTime, logoutTime, logonDay, logoutDay );
-  TimeRange localLogonTime
-    ( LocalTimeOnly(logonTime.getHour(), logonTime.getMinute(), logonTime.getSecond()),
-      LocalTimeOnly(logoutTime.getHour(), logoutTime.getMinute(), logoutTime.getSecond()),
-      logonDay, logoutDay );
-  TimeRange logonTimeRange = useLocalTime ? localLogonTime : utcLogonTime;
-
-  if( !sessionTimeRange.isInRange(logonTime, logonDay) )
-    throw ConfigError( "LogonTime must be between StartTime and EndTime" );
-  if( !sessionTimeRange.isInRange(logoutTime, logoutDay) )
-    throw ConfigError( "LogoutTime must be between StartTime and EndTime" );
-  pSession->setLogonTime( logonTimeRange );
 
   if ( settings.has( SEND_REDUNDANT_RESENDREQUESTS ) )
     pSession->setSendRedundantResendRequests( settings.getBool( SEND_REDUNDANT_RESENDREQUESTS ) );
@@ -180,14 +115,6 @@ Session* SessionFactory::create( const SessionID& sessionID,
     pSession->setLogonTimeout( settings.getInt( LOGON_TIMEOUT ) );
   if ( settings.has( LOGOUT_TIMEOUT ) )
     pSession->setLogoutTimeout( settings.getInt( LOGOUT_TIMEOUT ) );
-  if ( settings.has( RESET_ON_LOGON ) )
-    pSession->setResetOnLogon( settings.getBool( RESET_ON_LOGON ) );
-  if ( settings.has( RESET_ON_LOGOUT ) )
-    pSession->setResetOnLogout( settings.getBool( RESET_ON_LOGOUT ) );
-  if ( settings.has( RESET_ON_DISCONNECT ) )
-    pSession->setResetOnDisconnect( settings.getBool( RESET_ON_DISCONNECT ) );
-  if ( settings.has( RESET_ON_WRONG_TIME ) )
-    pSession->setResetOnWrongTime( settings.getBool( RESET_ON_WRONG_TIME ) );
   if ( settings.has( REFRESH_ON_LOGON ) )
     pSession->setRefreshOnLogon( settings.getBool( REFRESH_ON_LOGON ) );
   if ( settings.has( MILLISECONDS_IN_TIMESTAMP ) )
@@ -196,7 +123,6 @@ Session* SessionFactory::create( const SessionID& sessionID,
     pSession->setPersistMessages( settings.getBool( PERSIST_MESSAGES ) );
   if ( settings.has( VALIDATE_LENGTH_AND_CHECKSUM ) )
     pSession->setValidateLengthAndChecksum( settings.getBool( VALIDATE_LENGTH_AND_CHECKSUM ) );
-
   if ( settings.has( VALIDATE ) )
     pSession->setShouldValidate( settings.getBool( VALIDATE ) );
   if( settings.has( VALIDATE_FIELDS_OUT_OF_ORDER ) )

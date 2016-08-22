@@ -36,6 +36,7 @@
 #include "Mutex.h"
 #include "Log.h"
 #include "ValidationRules.h"
+#include "ScheduleFactory.h"
 #include <utility>
 #include <map>
 #include <queue>
@@ -50,7 +51,7 @@ public:
   Session( Application&, MessageStoreFactory&,
            const SessionID&,
            const DataDictionaryProvider&,
-           const TimeRange&,
+           const ISchedule* pSchedule,
            int heartBtInt, LogFactory* pLogFactory );
   virtual ~Session();
 
@@ -59,14 +60,14 @@ public:
   { m_state.enabled( true ); m_state.logoutReason( "" ); }
   void logout( const std::string& reason = "" ) 
   { m_state.enabled( false ); m_state.logoutReason( reason ); }
-  bool isEnabled() 
+  bool isEnabled() const
   { return m_state.enabled(); }
 
-  bool sentLogon() { return m_state.sentLogon(); }
-  bool sentLogout() { return m_state.sentLogout(); }
-  bool receivedLogon() { return m_state.receivedLogon(); }
-  bool isLoggedOn() { return receivedLogon() && sentLogon(); }
-  void reset() throw( IOException ) 
+  bool sentLogon() const { return m_state.sentLogon(); }
+  bool sentLogout() const { return m_state.sentLogout(); }
+  bool receivedLogon() const { return m_state.receivedLogon(); }
+  bool isLoggedOn() const { return receivedLogon() && sentLogon(); }
+  void deprecatedReset() throw( IOException ) 
   { generateLogout(); disconnect(); m_state.reset(); }
   void refresh() throw( IOException )
   { m_state.refresh(); }
@@ -108,19 +109,15 @@ public:
 
   static size_t numSessions();
 
-  bool isSessionTime(const UtcTimeStamp& time)
-    { return m_sessionTime.isInRange(time); }
-  bool isLogonTime(const UtcTimeStamp& time)
-    { return m_logonTime.isInRange(time); }
+  bool isConnectTime(const UtcTimeStamp& time) const;
+  bool isSessionTime(const UtcTimeStamp& time) const
+    { return m_pSchedule->isInRange(time); }
+  bool isLogonTime(const UtcTimeStamp& time) const
+    { return isEnabled() || m_pSchedule->isInRange(time); }
   bool isInitiator()
     { return m_state.initiate(); }
   bool isAcceptor()
     { return !m_state.initiate(); }
-
-  const TimeRange& getLogonTime()
-    { return m_logonTime; }
-  void setLogonTime( const TimeRange& value )
-    { m_logonTime = value; }
 
   const std::string& getSenderDefaultApplVerID()
     { return m_senderDefaultApplVerID; }
@@ -162,26 +159,6 @@ public:
   void setLogoutTimeout ( int value )
     { m_state.logoutTimeout( value ); }
 
-  bool getResetOnLogon()
-    { return m_resetOnLogon; }
-  void setResetOnLogon ( bool value )
-    { m_resetOnLogon = value; }
-
-  bool getResetOnLogout()
-    { return m_resetOnLogout; }
-  void setResetOnLogout ( bool value )
-    { m_resetOnLogout = value; }
-
-  bool getResetOnDisconnect()
-    { return m_resetOnDisconnect; }
-  void setResetOnDisconnect( bool value )
-    { m_resetOnDisconnect = value; }
-
-  bool getResetOnWrongTime()
-    { return m_resetOnWrongTime; }
-  void setResetOnWrongTime( bool value )
-    { m_resetOnWrongTime = value; }
-
   bool getRefreshOnLogon()
     { return m_refreshOnLogon; }
   void setRefreshOnLogon( bool value )
@@ -215,6 +192,7 @@ public:
     { m_validationRules.setAllowedFields (allowedfieldstr); }
   void setValidationRules ( const std::string &validationrules )
     { m_validationRules.setValidationRules( validationrules ); }
+  void setSchedule( const std::string &scheduledescriptor );
 
   void setResponder( Responder* pR )
   {
@@ -227,9 +205,10 @@ public:
   throw( FIX::Exception );
   void next();
   void next( const UtcTimeStamp& timeStamp );
-  void next( const std::string&, const UtcTimeStamp& timeStamp, int direction, bool queued = false );
-  void next( const Message&, const UtcTimeStamp& timeStamp, int direction, bool queued = false );
+  void next( const std::string&, const UtcTimeStamp& timeStamp,  bool queued = false );
+  void next( const Message&, const UtcTimeStamp& timeStamp,  bool queued = false );
   void disconnect();
+  void autoDisconnect();
 
   int getExpectedSenderNum() { return m_state.getNextSenderMsgSeqNum(); }
   int getExpectedTargetNum() { return m_state.getNextTargetMsgSeqNum(); }
@@ -261,16 +240,7 @@ private:
     UtcTimeStamp now;
     return labs( now - sendingTime ) <= m_maxLatency;
   }
-  bool checkSessionTime( const UtcTimeStamp& timeStamp )
-  {
-    UtcTimeStamp creationTime = m_state.getCreationTime();
-    bool ret = m_sessionTime.isInSameRange( timeStamp, creationTime );
-    if (!ret)
-    {
-      m_state.onEvent(std::string("timeStamp ") + UtcTimeStampConvertor::convert(timeStamp) + " nok "+m_sessionTime.dump() + " with creationTime " + UtcTimeStampConvertor::convert(creationTime));
-    }
-    return ret;
-  }
+  bool checkSessionTime( const UtcTimeStamp& timeStamp );
   bool isTargetTooHigh( const MsgSeqNum& msgSeqNum )
   { return msgSeqNum > ( m_state.getNextTargetMsgSeqNum() ); }
   bool isTargetTooLow( const MsgSeqNum& msgSeqNum )
@@ -291,20 +261,20 @@ private:
                      const SessionID& sessionID );
 
   void doBadTime( int direction, const Message& msg );
-  void doBadCompID( int direction, const Message& msg );
-  bool doPossDup( int direction, const Message& msg );
-  bool doTargetTooLow( int direction, const Message& msg );
-  void doTargetTooHigh( int direction, const Message& msg );
-  void nextQueued( const UtcTimeStamp& timeStamp, int direction );
-  bool nextQueued( int num, const UtcTimeStamp& timeStamp, int direction );
+  void doBadCompID( const Message& msg );
+  bool doPossDup( const Message& msg );
+  bool doTargetTooLow( const Message& msg );
+  void doTargetTooHigh( const Message& msg );
+  void nextQueued( const UtcTimeStamp& timeStamp );
+  bool nextQueued( int num, const UtcTimeStamp& timeStamp );
 
-  void nextLogon( int direction, const Message&, const UtcTimeStamp& timeStamp );
-  void nextHeartbeat( int direction, const Message&, const UtcTimeStamp& timeStamp );
-  void nextTestRequest( int direction, const Message&, const UtcTimeStamp& timeStamp );
-  void nextLogout( int direction, const Message&, const UtcTimeStamp& timeStamp );
-  void nextReject( int direction, const Message&, const UtcTimeStamp& timeStamp );
-  void nextSequenceReset( int direction, const Message&, const UtcTimeStamp& timeStamp );
-  void nextResendRequest( int direction, const Message&, const UtcTimeStamp& timeStamp );
+  void nextLogon( const Message&, const UtcTimeStamp& timeStamp );
+  void nextHeartbeat( const Message&, const UtcTimeStamp& timeStamp );
+  void nextTestRequest( const Message&, const UtcTimeStamp& timeStamp );
+  void nextLogout( const Message&, const UtcTimeStamp& timeStamp );
+  void nextReject( const Message&, const UtcTimeStamp& timeStamp );
+  void nextSequenceReset( const Message&, const UtcTimeStamp& timeStamp );
+  void nextResendRequest( const Message&, const UtcTimeStamp& timeStamp );
 
   void generateLogon();
   void generateLogon( const Message& );
@@ -332,8 +302,7 @@ private:
 
   Application& m_application;
   SessionID m_sessionID;
-  TimeRange m_sessionTime;
-  TimeRange m_logonTime;
+  std::unique_ptr<const ISchedule> m_pSchedule;
 
   std::string m_senderDefaultApplVerID;
   std::string m_targetDefaultApplVerID;

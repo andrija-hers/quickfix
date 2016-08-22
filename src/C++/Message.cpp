@@ -30,7 +30,7 @@
 
 namespace FIX
 {
-std::auto_ptr<DataDictionary> Message::s_dataDictionary;
+std::unique_ptr<DataDictionary> Message::s_dataDictionary;
 
 Message::Message()
 : m_validStructure( true ) {}
@@ -69,9 +69,7 @@ bool Message::InitializeXML( const std::string& url )
 {
   try
   {
-    std::auto_ptr<DataDictionary> p =
-      std::auto_ptr<DataDictionary>(new DataDictionary(url));
-    s_dataDictionary = p;
+    s_dataDictionary.reset(new DataDictionary(url));
     return true;
   }
   catch( ConfigError& )
@@ -351,7 +349,7 @@ void Message::setGroup( const std::string& msg, const FieldBase& field,
   int delim;
   const DataDictionary* pDD = 0;
   if ( !dataDictionary.getGroup( msg, group, delim, pDD ) ) return ;
-  std::auto_ptr<Group> pGroup;
+  std::unique_ptr<Group> pGroup;
 
   while ( pos < string.size() )
   {

@@ -244,7 +244,7 @@ void HttpConnection::processResetSessions
       std::set<SessionID> sessions = Session::getSessions();
       std::set<SessionID>::iterator session;
       for( session = sessions.begin(); session != sessions.end(); ++session )
-      Session::lookupSession( *session )->reset();
+      Session::lookupSession( *session )->deprecatedReset();
       copy.removeParameter("confirm");
     }
 
@@ -486,26 +486,6 @@ void HttpConnection::processSession
       pSession->setLogoutTimeout( value <= 0 ? 1 : value );
       copy.removeParameter(LOGOUT_TIMEOUT);
     }
-    if( copy.hasParameter(RESET_ON_LOGON) )
-    {
-      pSession->setResetOnLogon( copy.getParameter(RESET_ON_LOGON) != "0" );
-      copy.removeParameter(RESET_ON_LOGON);
-    }
-    if( copy.hasParameter(RESET_ON_LOGOUT) )
-    {
-      pSession->setResetOnLogout( copy.getParameter(RESET_ON_LOGOUT) != "0" );
-      copy.removeParameter(RESET_ON_LOGOUT);
-    }
-    if( copy.hasParameter(RESET_ON_DISCONNECT) )
-    {
-      pSession->setResetOnDisconnect( copy.getParameter(RESET_ON_DISCONNECT) != "0" );
-      copy.removeParameter(RESET_ON_DISCONNECT);
-    }
-    if( copy.hasParameter(RESET_ON_WRONG_TIME) )
-    {
-      pSession->setResetOnDisconnect( copy.getParameter(RESET_ON_WRONG_TIME) != "0" );
-      copy.removeParameter(RESET_ON_WRONG_TIME);
-    }
     if( copy.hasParameter(REFRESH_ON_LOGON) )
     {
       pSession->setRefreshOnLogon( copy.getParameter(REFRESH_ON_LOGON) != "0" );
@@ -547,10 +527,6 @@ void HttpConnection::processSession
     showRow( b, MAX_LATENCY, pSession->getMaxLatency(), url );
     showRow( b, LOGON_TIMEOUT, pSession->getLogonTimeout(), url );
     showRow( b, LOGOUT_TIMEOUT, pSession->getLogoutTimeout(), url );
-    showRow( b, RESET_ON_LOGON, pSession->getResetOnLogon(), url );
-    showRow( b, RESET_ON_LOGOUT, pSession->getResetOnLogout(), url );
-    showRow( b, RESET_ON_DISCONNECT, pSession->getResetOnDisconnect(), url );
-    showRow( b, RESET_ON_WRONG_TIME, pSession->getResetOnWrongTime(), url );
     showRow( b, REFRESH_ON_LOGON, pSession->getRefreshOnLogon(), url );
     showRow( b, MILLISECONDS_IN_TIMESTAMP, pSession->getMillisecondsInTimeStamp(), url );
     showRow( b, PERSIST_MESSAGES, pSession->getPersistMessages(), url );
@@ -584,7 +560,7 @@ void HttpConnection::processResetSession
     if( copy.hasParameter("confirm") && copy.getParameter("confirm") != "0" )
     {
       confirm = true;
-      pSession->reset();
+      pSession->deprecatedReset();
       copy.removeParameter("confirm");
     }
 

@@ -776,6 +776,13 @@ struct UtcTimeOnlyConvertor
   }
 };
 
+inline std::ostream& operator <<
+( std::ostream& stream, const UtcTimeOnly& uto )
+{
+  stream << UtcTimeOnlyConvertor::convert(uto, true) ;
+  return stream;
+}
+
 /// Converts a UtcDate to/from a string
 struct UtcDateConvertor
 {

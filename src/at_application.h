@@ -163,7 +163,7 @@ class Application : public FIX::Application
   void onCreate( const FIX::SessionID& sessionID )
   {
     FIX::Session * pSession = FIX::Session::lookupSession( sessionID );
-    if ( pSession ) pSession->reset();
+    if ( pSession ) pSession->deprecatedReset();
   }
 
   void onLogon( const FIX::SessionID& sessionID )

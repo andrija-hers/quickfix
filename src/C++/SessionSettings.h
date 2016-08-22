@@ -75,6 +75,7 @@ const char VALIDATE_USER_DEFINED_FIELDS[] = "ValidateUserDefinedFields";
 const char VALIDATE_BOUNDS[] = "ValidateBounds";
 const char ALLOWED_FIELDS[] = "AllowedFields";
 const char VALIDATION_RULES[] = "ValidationRules";
+const char SCHEDULE[] = "Schedule";
 const char LOGON_TIMEOUT[] = "LogonTimeout";
 const char LOGOUT_TIMEOUT[] = "LogoutTimeout";
 const char FILE_STORE_PATH[] = "FileStorePath";

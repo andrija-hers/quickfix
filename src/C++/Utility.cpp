@@ -24,6 +24,7 @@
 #endif
 
 #include "Utility.h"
+#include "FieldConvertors.h"
 
 #ifdef USING_STREAMS
 #include <stropts.h>
@@ -76,6 +77,49 @@ std::string string_strip( const std::string& value )
    return value;
 
   return std::string( value, startPos, endPos - startPos + 1 );
+}
+
+// trim from start
+std::string ltrim( std::string s )
+{
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+  return s;
+}
+
+// trim from end
+std::string rtrim(std::string s)
+{
+  s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+  return s;
+}
+
+// trim from both ends
+std::string trim(std::string s)
+{
+  return ltrim(rtrim(s));
+}
+
+void split( const std::string& string, const std::string& delimiter, SplitCallback cb )
+{
+  size_t next = -1, current = next;
+  do {
+    current = next+1;
+    next = string.find_first_of( delimiter, current );
+    cb( trim( string.substr( current, next - current ) ) );
+  } while( next != std::string::npos);
+}
+static void setInserter( std::set<int>& set, const std::string& string )
+{
+  int i;
+  FIX::IntConvertor::convert( string, i );
+  set.insert(i);
+}
+
+std::set<int> intSetFromSplit( const std::string& string, const std::string& delimiter ) 
+{
+  std::set<int> ret;
+  split( string, delimiter, bind( setInserter, std::ref(ret), std::placeholders::_1 ) );
+  return ret;
 }
 
 void socket_init()

@@ -47,6 +47,7 @@ TEST(validConfiguration)
   settings.setString(START_TIME, "12:00:00");
   settings.setString(END_TIME, "12:00:00");
   settings.setString(HEARTBTINT, "30");
+  settings.setString(SCHEDULE, "W|4,5,1,3|22:00:00|20:30|AutoEOD|AutoReconnect|60|AutoConnect|AutoDisconnect");
   object.destroy(object.create(sessionID, settings));
 }
 

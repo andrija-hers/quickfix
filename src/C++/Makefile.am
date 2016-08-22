@@ -114,7 +114,10 @@ libquickfix_la_SOURCES = \
 	pugixml.hpp \
 	pugiconfig.hpp \
 	MessageCracker.h \
-	Responder.h
+	Responder.h \
+	ScheduleFactory.h \
+	Schedule.h \
+	Schedule.cpp
 
 BUILT_SOURCES = Allocator.h
 CLEANFILES = Allocator.h

@@ -42,12 +42,11 @@ Session::Session( Application& application,
                   MessageStoreFactory& messageStoreFactory,
                   const SessionID& sessionID,
                   const DataDictionaryProvider& dataDictionaryProvider,
-                  const TimeRange& sessionTime,
+                  const ISchedule* pSchedule,
                   int heartBtInt, LogFactory* pLogFactory )
 : m_application( application ),
   m_sessionID( sessionID ),
-  m_sessionTime( sessionTime ),
-  m_logonTime( sessionTime ),
+  m_pSchedule( pSchedule ),
   m_senderDefaultApplVerID(ApplVerID_FIX50),
   m_targetDefaultApplVerID(ApplVerID_FIX50),
   m_sendRedundantResendRequests( false ),
@@ -57,7 +56,6 @@ Session::Session( Application& application,
   m_resetOnLogon( false ),
   m_resetOnLogout( false ), 
   m_resetOnDisconnect( false ),
-  m_resetOnWrongTime( true ),
   m_refreshOnLogon( false ),
   m_millisecondsInTimeStamp( true ),
   m_persistMessages( true ),
@@ -202,7 +200,7 @@ void Session::next( const UtcTimeStamp& timeStamp )
   }
 }
 
-void Session::nextLogon( int direction, const Message& logon, const UtcTimeStamp& timeStamp )
+void Session::nextLogon( const Message& logon, const UtcTimeStamp& timeStamp )
 {
   SenderCompID senderCompID;
   TargetCompID targetCompID;
@@ -221,8 +219,9 @@ void Session::nextLogon( int direction, const Message& logon, const UtcTimeStamp
 
   if( !isLogonTime(timeStamp) )
   {
+    std::cout << "!isLogonTime" << std::endl;
     m_state.onEvent( "Received logon outside of valid logon time" );
-    disconnect();
+    autoDisconnect();
     return;
   }
 
@@ -249,7 +248,7 @@ void Session::nextLogon( int direction, const Message& logon, const UtcTimeStamp
     m_state.reset();
   }
 
-  if( !verify( logon, direction, false, true ) )
+  if( !verify( logon, INCOMING_DIRECTION, false, true ) )
     return;
   m_state.receivedLogon( true );
 
@@ -271,36 +270,36 @@ void Session::nextLogon( int direction, const Message& logon, const UtcTimeStamp
   logon.getHeader().getField( msgSeqNum );
   if ( isTargetTooHigh( msgSeqNum ) && !resetSeqNumFlag )
   {
-    doTargetTooHigh( direction, logon );
+    doTargetTooHigh( logon );
   }
   else
   {
     m_state.incrNextTargetMsgSeqNum();
-    nextQueued( timeStamp, direction );
+    nextQueued( timeStamp );
   }
 
   if ( isLoggedOn() )
     m_application.onLogon( m_sessionID );
 }
 
-void Session::nextHeartbeat( int direction, const Message& heartbeat, const UtcTimeStamp& timeStamp )
+void Session::nextHeartbeat( const Message& heartbeat, const UtcTimeStamp& timeStamp )
 {
-  if ( !verify( heartbeat, direction ) ) return ;
+  if ( !verify( heartbeat, INCOMING_DIRECTION ) ) return ;
   m_state.incrNextTargetMsgSeqNum();
-  nextQueued( timeStamp, direction );
+  nextQueued( timeStamp );
 }
 
-void Session::nextTestRequest( int direction, const Message& testRequest, const UtcTimeStamp& timeStamp )
+void Session::nextTestRequest( const Message& testRequest, const UtcTimeStamp& timeStamp )
 {
-  if ( !verify( testRequest, direction ) ) return ;
+  if ( !verify( testRequest, INCOMING_DIRECTION ) ) return ;
   generateHeartbeat( testRequest );
   m_state.incrNextTargetMsgSeqNum();
-  nextQueued( timeStamp, direction );
+  nextQueued( timeStamp );
 }
 
-void Session::nextLogout( int direction, const Message& logout, const UtcTimeStamp& timeStamp )
+void Session::nextLogout( const Message& logout, const UtcTimeStamp& timeStamp )
 {
-  if ( !verify( logout, direction, false, false ) ) return ;
+  if ( !verify( logout, INCOMING_DIRECTION, false, false ) ) return ;
   if ( !m_state.sentLogout() )
   {
     m_state.onEvent( "Received logout request" );
@@ -312,17 +311,17 @@ void Session::nextLogout( int direction, const Message& logout, const UtcTimeSta
 
   m_state.incrNextTargetMsgSeqNum();
   if ( m_resetOnLogout ) m_state.reset();
-  disconnect();
+  autoDisconnect();
 }
 
-void Session::nextReject( int direction, const Message& reject, const UtcTimeStamp& timeStamp )
+void Session::nextReject( const Message& reject, const UtcTimeStamp& timeStamp )
 {
-  if ( !verify( reject, direction, false, true ) ) return ;
+  if ( !verify( reject, INCOMING_DIRECTION, false, true ) ) return ;
   m_state.incrNextTargetMsgSeqNum();
-  nextQueued( timeStamp, direction );
+  nextQueued( timeStamp );
 }
 
-void Session::nextSequenceReset( int direction, const Message& sequenceReset, const UtcTimeStamp& timeStamp )
+void Session::nextSequenceReset( const Message& sequenceReset, const UtcTimeStamp& timeStamp )
 {
   bool isGapFill = false;
   GapFillFlag gapFillFlag;
@@ -331,7 +330,7 @@ void Session::nextSequenceReset( int direction, const Message& sequenceReset, co
     isGapFill = gapFillFlag;
   }
 
-  if ( !verify( sequenceReset, direction, isGapFill, isGapFill ) ) return ;
+  if ( !verify( sequenceReset, INCOMING_DIRECTION, isGapFill, isGapFill ) ) return ;
 
   NewSeqNo newSeqNo;
   if ( sequenceReset.getFieldIfSet( newSeqNo ) )
@@ -343,13 +342,13 @@ void Session::nextSequenceReset( int direction, const Message& sequenceReset, co
     if ( newSeqNo > getExpectedTargetNum() )
       m_state.setNextTargetMsgSeqNum( MsgSeqNum( newSeqNo ) );
     else if ( newSeqNo < getExpectedTargetNum() )
-      generateReject( direction, sequenceReset, SessionRejectReason_VALUE_IS_INCORRECT );
+      generateReject( INCOMING_DIRECTION, sequenceReset, SessionRejectReason_VALUE_IS_INCORRECT );
   }
 }
 
-void Session::nextResendRequest( int direction, const Message& resendRequest, const UtcTimeStamp& timeStamp )
+void Session::nextResendRequest( const Message& resendRequest, const UtcTimeStamp& timeStamp )
 {
-  if ( !verify( resendRequest, direction, false, false ) ) return ;
+  if ( !verify( resendRequest, INCOMING_DIRECTION, false, false ) ) return ;
 
   Locker l( m_mutex );
 
@@ -457,6 +456,11 @@ void Session::nextResendRequest( int direction, const Message& resendRequest, co
   resendRequest.getHeader().getField( msgSeqNum );
   if( !isTargetTooHigh(msgSeqNum) && !isTargetTooLow(msgSeqNum) )
     m_state.incrNextTargetMsgSeqNum();
+}
+
+void Session::setSchedule( const std::string& scheduledescriptor )
+{
+  m_pSchedule.reset(createSchedule(scheduledescriptor));
 }
 
 bool Session::send( Message& message )
@@ -571,7 +575,9 @@ bool Session::sendRaw( Message& message, int num )
           persist( message, messageString );
 
         if ( isLoggedOn() )
+        {
           send( messageString );
+        }
       }
       catch ( DoNotSend& ) { return false; }
     }
@@ -622,6 +628,11 @@ void Session::disconnect()
   }
 
   m_state.resendRange( 0, 0 );
+}
+
+void Session::autoDisconnect () {
+  if ( m_pSchedule->shouldAutoDisconnect() )
+    disconnect();
 }
 
 bool Session::resend( Message& message )
@@ -1076,18 +1087,18 @@ bool Session::verify( const Message& msg, int direction, bool checkTooHigh,
     }
     if ( !isCorrectCompID( senderCompID, targetCompID ) )
     {
-      doBadCompID( direction, msg );
+      doBadCompID( msg );
       return false;
     }
 
     if ( checkTooHigh && isTargetTooHigh( *pMsgSeqNum ) )
     {
-      doTargetTooHigh( direction, msg );
+      doTargetTooHigh( msg );
       return false;
     }
     else if ( checkTooLow && isTargetTooLow( *pMsgSeqNum ) )
     {
-      doTargetTooLow( direction, msg );
+      doTargetTooLow( msg );
       return false;
     }
 
@@ -1120,25 +1131,38 @@ bool Session::verify( const Message& msg, int direction, bool checkTooHigh,
   return true;
 }
 
+bool Session::checkSessionTime( const UtcTimeStamp& timeStamp )
+{
+  return m_pSchedule->isInRange( timeStamp );
+  /*
+  UtcTimeStamp creationTime = m_state.getCreationTime();
+  bool ret = m_sessionTime.isInSameRange( timeStamp, creationTime );
+  if (!ret)
+  {
+    m_state.onEvent(std::string("timeStamp ") + UtcTimeStampConvertor::convert(timeStamp) + " nok "+m_sessionTime.dump() + " with creationTime " + UtcTimeStampConvertor::convert(creationTime));
+  }
+  return ret;
+  */
+}
 bool Session::checkForSessionTime( const UtcTimeStamp& timeStamp, bool disconnecttoo )
 {
   if( !checkSessionTime(timeStamp) ) 
   {
-    if (m_resetOnWrongTime) 
+    if( m_pSchedule->shouldAutoEOD() )
     {
-      m_state.onEvent("Reset on wrong time");
-      reset();
+      m_state.onEvent("hard reset");
+      m_state.reset();
     }
     else
     {
       m_state.onEvent("softReset");
       m_state.store()->softReset();
-      if (disconnecttoo)
-      {
-        generateLogout();
-        disconnect();
-      }
     }
+    if( isLoggedOn() )
+    {
+      generateLogout();
+    }
+    autoDisconnect();
     return false;
   }
   return true;
@@ -1190,13 +1214,13 @@ void Session::doBadTime( int direction, const Message& msg )
   generateLogout();
 }
 
-void Session::doBadCompID( int direction, const Message& msg )
+void Session::doBadCompID( const Message& msg )
 {
-  generateReject( direction, msg, SessionRejectReason_COMPID_PROBLEM );
+  generateReject( INCOMING_DIRECTION, msg, SessionRejectReason_COMPID_PROBLEM );
   generateLogout();
 }
 
-bool Session::doPossDup( int direction, const Message& msg )
+bool Session::doPossDup( const Message& msg )
 {
   const Header & header = msg.getHeader();
   OrigSendingTime origSendingTime;
@@ -1210,13 +1234,13 @@ bool Session::doPossDup( int direction, const Message& msg )
   {
     if ( !header.getFieldIfSet( origSendingTime ) )
     {
-      generateReject( direction, msg, SessionRejectReason_REQUIRED_TAG_MISSING, origSendingTime.getTag() );
+      generateReject( INCOMING_DIRECTION, msg, SessionRejectReason_REQUIRED_TAG_MISSING, origSendingTime.getTag() );
       return false;
     }
 
     if ( origSendingTime > sendingTime )
     {
-      generateReject( direction, msg, SessionRejectReason_SENDINGTIME_ACCURACY_PROBLEM );
+      generateReject( INCOMING_DIRECTION, msg, SessionRejectReason_SENDINGTIME_ACCURACY_PROBLEM );
       generateLogout();
       return false;
     }
@@ -1224,7 +1248,7 @@ bool Session::doPossDup( int direction, const Message& msg )
   return true;
 }
 
-bool Session::doTargetTooLow( int direction, const Message& msg )
+bool Session::doTargetTooLow( const Message& msg )
 {
   const Header & header = msg.getHeader();
   PossDupFlag possDupFlag(false);
@@ -1241,10 +1265,10 @@ bool Session::doTargetTooLow( int direction, const Message& msg )
     throw std::logic_error( stream.str() );
   }
 
-  return doPossDup( direction, msg );
+  return doPossDup( msg );
 }
 
-void Session::doTargetTooHigh( int direction, const Message& msg )
+void Session::doTargetTooHigh( const Message& msg )
 {
   const Header & header = msg.getHeader();
   BeginString beginString;
@@ -1276,12 +1300,12 @@ void Session::doTargetTooHigh( int direction, const Message& msg )
   generateResendRequest( beginString, msgSeqNum );
 }
 
-void Session::nextQueued( const UtcTimeStamp& timeStamp, int direction )
+void Session::nextQueued( const UtcTimeStamp& timeStamp )
 {
-  while ( nextQueued( getExpectedTargetNum(), timeStamp, direction ) ) {}
+  while ( nextQueued( getExpectedTargetNum(), timeStamp ) ) {}
 }
 
-bool Session::nextQueued( int num, const UtcTimeStamp& timeStamp, int direction )
+bool Session::nextQueued( int num, const UtcTimeStamp& timeStamp )
 {
   Message msg;
   MsgType msgType;
@@ -1298,15 +1322,16 @@ bool Session::nextQueued( int num, const UtcTimeStamp& timeStamp, int direction 
     }
     else
     {
-      next( msg, timeStamp, direction, true );
+      next( msg, timeStamp, true );
     }
     return true;
   }
   return false;
 }
 
-void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, int direction, bool queued )
+void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, bool queued )
 {
+  int direction = INCOMING_DIRECTION;
   //std::cout << "string next " << msg << " direction " << direction << std::endl;
   try
   {
@@ -1317,11 +1342,11 @@ void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, int d
     {
       const DataDictionary& applicationDD =
         m_dataDictionaryProvider.getApplicationDataDictionary(m_senderDefaultApplVerID);
-      next( Message( direction, msg, sessionDD, applicationDD, &m_validationRules ), timeStamp, direction, queued );
+      next( Message( direction, msg, sessionDD, applicationDD, &m_validationRules ), timeStamp, queued );
     }
     else
     {
-      next( Message( direction, msg, sessionDD, &m_validationRules ), timeStamp, direction, queued );
+      next( Message( direction, msg, sessionDD, &m_validationRules ), timeStamp, queued );
     }
   }
   catch ( FieldNotFound & e ) 
@@ -1396,9 +1421,10 @@ void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, int d
   */
 }
 
-void Session::next( const Message& message, const UtcTimeStamp& timeStamp, int direction, bool queued )
+void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool queued )
 {
-  //std::cout << "Message next " << message.toString() << " direction " << direction << std::endl;
+  int direction = INCOMING_DIRECTION;
+  //std::cout << "Message next " << message.toString() << std::endl;
   const Header& header = message.getHeader();
 
   try
@@ -1437,27 +1463,27 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, int d
       header.getFieldIfSet(applVerID);
       const DataDictionary& applicationDataDictionary = 
         m_dataDictionaryProvider.getApplicationDataDictionary(applVerID);
-      DataDictionary::validate( direction, message, &sessionDataDictionary, &applicationDataDictionary, 0 );
+      DataDictionary::validate( INCOMING_DIRECTION, message, &sessionDataDictionary, &applicationDataDictionary, 0 );
     }
     else
     {
-      sessionDataDictionary.validate( direction, message, &m_validationRules );
+      sessionDataDictionary.validate( INCOMING_DIRECTION, message, &m_validationRules );
     }
 
     if ( msgType == MsgType_Logon )
-      nextLogon( direction, message, timeStamp );
+      nextLogon( message, timeStamp );
     else if ( msgType == MsgType_Heartbeat )
-      nextHeartbeat( direction, message, timeStamp );
+      nextHeartbeat( message, timeStamp );
     else if ( msgType == MsgType_TestRequest )
-      nextTestRequest( direction, message, timeStamp );
+      nextTestRequest( message, timeStamp );
     else if ( msgType == MsgType_SequenceReset )
-      nextSequenceReset( direction, message, timeStamp );
+      nextSequenceReset( message, timeStamp );
     else if ( msgType == MsgType_Logout )
-      nextLogout( direction, message, timeStamp );
+      nextLogout( message, timeStamp );
     else if ( msgType == MsgType_ResendRequest )
-      nextResendRequest( direction, message,timeStamp );
+      nextResendRequest( message,timeStamp );
     else if ( msgType == MsgType_Reject )
-      nextReject( direction, message, timeStamp );
+      nextReject( message, timeStamp );
     else
     {
       if ( !verify( message, direction ) ) return ;
@@ -1521,7 +1547,7 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, int d
   catch ( UnsupportedVersion& )
   {
     if ( header.getField(FIELD::MsgType) == MsgType_Logout )
-      nextLogout( direction, message, timeStamp );
+      nextLogout( message, timeStamp );
     else
     {
       generateLogout( "Incorrect BeginString" );
@@ -1535,7 +1561,7 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, int d
   }
 
   if( !queued )
-    nextQueued( timeStamp, direction );
+    nextQueued( timeStamp );
 
   if( isLoggedOn() )
     next();
@@ -1654,6 +1680,17 @@ size_t Session::numSessions()
 {
   Locker locker( s_mutex );
   return s_sessions.size();
+}
+
+bool Session::isConnectTime( const UtcTimeStamp& time ) const
+{
+  if ( isSessionTime ( time ) ) 
+  {
+    if ( isLoggedOn () ) 
+      return m_pSchedule->shouldAutoReconnect();
+    return m_pSchedule->shouldAutoConnect();
+  }
+  return isEnabled();
 }
 
 bool Session::addSession( Session& s )

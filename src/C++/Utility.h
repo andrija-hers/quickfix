@@ -97,6 +97,9 @@ typedef int ssize_t;
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <functional>
+#include <algorithm>
+#include <set>
 
 #if defined(HAVE_STD_SHARED_PTR)
   namespace ptr = std;
@@ -116,6 +119,12 @@ void string_replace( const std::string& oldValue,
 std::string string_toLower( const std::string& value );
 std::string string_toUpper( const std::string& value );
 std::string string_strip( const std::string& value );
+std::string ltrim( std::string s );
+std::string rtrim(std::string s);
+std::string trim(std::string s);
+typedef std::function<void(const std::string&)> SplitCallback;
+void split( const std::string& string, const std::string& delimiter, SplitCallback cb );
+std::set<int> intSetFromSplit( const std::string& string, const std::string& delimiter );
 
 void socket_init();
 void socket_term();
