@@ -35,7 +35,7 @@ SocketInitiator::SocketInitiator( Application& application,
 throw( ConfigError )
 : Initiator( application, factory, settings ),
   m_connector( 1 ), m_lastConnect( 0 ),
-  m_reconnectInterval( 30 ), m_noDelay( false ), m_sendBufSize( 0 ),
+  m_reconnectInterval( 1 ), m_noDelay( false ), m_sendBufSize( 0 ),
   m_rcvBufSize( 0 ) 
 {
 }
@@ -47,7 +47,7 @@ SocketInitiator::SocketInitiator( Application& application,
 throw( ConfigError )
 : Initiator( application, factory, settings, logFactory ),
   m_connector( 1 ), m_lastConnect( 0 ),
-  m_reconnectInterval( 30 ), m_noDelay( false ), m_sendBufSize( 0 ),
+  m_reconnectInterval( 1 ), m_noDelay( false ), m_sendBufSize( 0 ),
   m_rcvBufSize( 0 )
 {
 }
@@ -135,7 +135,7 @@ void SocketInitiator::doConnect( const SessionID& s, const Dictionary& d )
     std::string address;
     short port = 0;
     Session* session = Session::lookupSession( s );
-    if( !session->isSessionTime(UtcTimeStamp()) ) return;
+    if( !session->shouldConnectPrerequisites(UtcTimeStamp()) ) return;
 
     Log* log = session->getLog();
 

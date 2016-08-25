@@ -34,7 +34,7 @@ ThreadedSocketInitiator::ThreadedSocketInitiator(
   MessageStoreFactory& factory,
   const SessionSettings& settings ) throw( ConfigError )
 : Initiator( application, factory, settings ),
-  m_lastConnect( 0 ), m_reconnectInterval( 30 ), m_noDelay( false ), 
+  m_lastConnect( 0 ), m_reconnectInterval( 1 ), m_noDelay( false ), 
   m_sendBufSize( 0 ), m_rcvBufSize( 0 ) 
 { 
   socket_init(); 
@@ -46,7 +46,7 @@ ThreadedSocketInitiator::ThreadedSocketInitiator(
   const SessionSettings& settings,
   LogFactory& logFactory ) throw( ConfigError )
 : Initiator( application, factory, settings, logFactory ),
-  m_lastConnect( 0 ), m_reconnectInterval( 30 ), m_noDelay( false ), 
+  m_lastConnect( 0 ), m_reconnectInterval( 1 ), m_noDelay( false ), 
   m_sendBufSize( 0 ), m_rcvBufSize( 0 ) 
 { 
   socket_init(); 
@@ -135,7 +135,7 @@ void ThreadedSocketInitiator::doConnect( const SessionID& s, const Dictionary& d
   try
   {
     Session* session = Session::lookupSession( s );
-    if( !session->isSessionTime(UtcTimeStamp()) ) return;
+    if( !session->shouldConnectPrerequisites(UtcTimeStamp()) ) return;
 
     Log* log = session->getLog();
 

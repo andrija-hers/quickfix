@@ -109,7 +109,7 @@ public:
 
   static size_t numSessions();
 
-  bool isConnectTime(const UtcTimeStamp& time) const;
+  bool isConnectTime(const UtcTimeStamp& time);
   bool isSessionTime(const UtcTimeStamp& time) const
     { return m_pSchedule->isInRange(time); }
   bool isLogonTime(const UtcTimeStamp& time) const
@@ -209,6 +209,7 @@ public:
   void next( const Message&, const UtcTimeStamp& timeStamp,  bool queued = false );
   void disconnect();
   void autoDisconnect();
+  bool shouldConnectPrerequisites( const UtcTimeStamp& timeStamp ) const;
 
   int getExpectedSenderNum() { return m_state.getNextSenderMsgSeqNum(); }
   int getExpectedTargetNum() { return m_state.getNextTargetMsgSeqNum(); }

@@ -15,6 +15,7 @@ struct ISchedule {
     virtual bool shouldAutoReconnect( ) const = 0;
     virtual bool shouldAutoDisconnect( ) const = 0;
     virtual bool shouldAutoConnect( ) const = 0;
+    virtual int  reconnectInterval( ) const = 0;
 };
 
 class InvalidWeeklyScheduleDescriptorElement : public std::out_of_range

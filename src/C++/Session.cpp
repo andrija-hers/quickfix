@@ -65,6 +65,7 @@ Session::Session( Application& application,
   m_pLogFactory( pLogFactory ),
   m_pResponder( 0 )
 {
+  m_state.enabled( m_pSchedule->isInRange( UtcTimeStamp() ) );
   m_state.heartBtInt( heartBtInt );
   m_state.initiate( heartBtInt != 0 );
   m_state.store( m_messageStoreFactory.create( m_sessionID ) );
@@ -631,8 +632,41 @@ void Session::disconnect()
 }
 
 void Session::autoDisconnect () {
+  if ( isSessionTime( UtcTimeStamp() ) )
+  {
+    if ( m_pSchedule->shouldAutoReconnect() )
+      logon();
+    return;
+  }
   if ( m_pSchedule->shouldAutoDisconnect() )
     disconnect();
+  else
+  {
+    if ( m_state.receivedLogon() || m_state.sentLogon() )
+    {
+      m_state.receivedLogon( false );
+      m_state.sentLogon( false );
+      m_application.onLogout( m_sessionID );
+    }
+
+    m_state.sentLogout( false );
+    m_state.receivedReset( false );
+    m_state.sentReset( false );
+    m_state.clearQueue();
+    m_state.logoutReason();
+    m_state.resendRange( 0, 0 );
+  }
+}
+
+bool Session::shouldConnectPrerequisites( const UtcTimeStamp& time ) const 
+{
+  if ( isSessionTime ( time ) ) 
+  {
+    if ( isLoggedOn () ) 
+      return m_pSchedule->shouldAutoReconnect();
+    return m_pSchedule->shouldAutoConnect() || isEnabled();
+  }
+  return isEnabled();
 }
 
 bool Session::resend( Message& message )
@@ -1133,7 +1167,7 @@ bool Session::verify( const Message& msg, int direction, bool checkTooHigh,
 
 bool Session::checkSessionTime( const UtcTimeStamp& timeStamp )
 {
-  return m_pSchedule->isInRange( timeStamp );
+  return isEnabled() || m_pSchedule->isInRange( timeStamp );
   /*
   UtcTimeStamp creationTime = m_state.getCreationTime();
   bool ret = m_sessionTime.isInSameRange( timeStamp, creationTime );
@@ -1144,6 +1178,7 @@ bool Session::checkSessionTime( const UtcTimeStamp& timeStamp )
   return ret;
   */
 }
+
 bool Session::checkForSessionTime( const UtcTimeStamp& timeStamp, bool disconnecttoo )
 {
   if( !checkSessionTime(timeStamp) ) 
@@ -1429,7 +1464,7 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
 
   try
   {
-    if ( !checkForSessionTime(timeStamp, true) )
+    if ( !(checkForSessionTime(timeStamp, true) || isEnabled()) )
       return;
 
     const MsgType& msgType = FIELD_GET_REF( header, MsgType );
@@ -1682,15 +1717,15 @@ size_t Session::numSessions()
   return s_sessions.size();
 }
 
-bool Session::isConnectTime( const UtcTimeStamp& time ) const
+bool Session::isConnectTime( const UtcTimeStamp& time )
 {
-  if ( isSessionTime ( time ) ) 
-  {
-    if ( isLoggedOn () ) 
-      return m_pSchedule->shouldAutoReconnect();
-    return m_pSchedule->shouldAutoConnect();
-  }
-  return isEnabled();
+  if ( !shouldConnectPrerequisites( time ) )
+    return false;
+  //std::cout << "shouldConnectPrerequisites ok for " << getSessionID() << ", reconnectInterval " << m_pSchedule->reconnectInterval() << ", time diff " << (time - m_state.lastConnectionAttemptTime()) << std::endl;
+  bool ret = m_pSchedule->reconnectInterval() <= (time - m_state.lastConnectionAttemptTime());
+  if (ret) 
+    m_state.lastConnectionAttemptTime( time );
+  return ret;
 }
 
 bool Session::addSession( Session& s )

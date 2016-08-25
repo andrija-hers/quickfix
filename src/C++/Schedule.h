@@ -23,6 +23,8 @@ class Schedule : public ISchedule
     { return m_autoConnect; }
     virtual bool shouldAutoDisconnect( ) const
     { return m_autoDisconnect; }
+    virtual int  reconnectInterval( ) const
+    { return m_autoReconnectInterval; }
 
   protected:
     bool m_autoEOD;
@@ -152,6 +154,7 @@ class NullSchedule : public ISchedule
     virtual bool shouldAutoReconnect( ) const { return false; }
     virtual bool shouldAutoConnect( ) const { return false; }
     virtual bool shouldAutoDisconnect( ) const { return false; }
+    virtual int  reconnectInterval( ) const { return 10000000; }
 };
 }
 

@@ -45,7 +45,10 @@ public:
   m_sentReset( false ), m_receivedReset( false ),
   m_initiate( false ), m_logonTimeout( 10 ), 
   m_logoutTimeout( 2 ), m_testRequest( 0 ),
-  m_pStore( 0 ), m_pLog( 0 ) {}
+  m_pStore( 0 ), m_pLog( 0 )
+  {
+    m_lastConnectionAttempt += -10000000;
+  }
 
   bool enabled() const { return m_enabled; }
   void enabled( bool value ) { m_enabled = value; }
@@ -107,10 +110,15 @@ public:
 
   void lastReceivedTime( const UtcTimeStamp& value )
   { m_lastReceivedTime = value; }
-  UtcTimeStamp& lastReceivedTime()
-  { return m_lastReceivedTime; }
   const UtcTimeStamp& lastReceivedTime() const
   { return m_lastReceivedTime; }
+
+  void lastConnectionAttemptTime( const UtcTimeStamp& value )
+  { m_lastConnectionAttempt = value; }
+  const UtcTimeStamp& lastConnectionAttemptTime () const
+  { return m_lastConnectionAttempt; }
+
+
 
   bool shouldSendLogon() const { return initiate() && !sentLogon(); }
   bool alreadySentLogon() const { return initiate() && sentLogon(); }
@@ -225,6 +233,7 @@ private:
   HeartBtInt m_heartBtInt;
   UtcTimeStamp m_lastSentTime;
   UtcTimeStamp m_lastReceivedTime;
+  UtcTimeStamp m_lastConnectionAttempt;
   std::string m_logoutReason;
   Messages m_queue;
   MessageStore* m_pStore;
