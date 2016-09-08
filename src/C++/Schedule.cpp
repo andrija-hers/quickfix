@@ -271,7 +271,8 @@ bool NormalDailySchedule::isInRange( const UtcTimeStamp& time ) const
     startms = toWeeklyMilliseconds( day, m_start ),
     endms = toWeeklyMilliseconds( day, m_end );
 
-  //std::cout << "NormalDailySchedule isInRange?, test " << testms << " against " << startms << " " << endms << " => " << (testms >= startms && testms <= endms) << std::endl;
+  if ( ! (testms >= startms && testms <= endms) )
+    //std::cout << "NormalDailySchedule isInRange?, test " << testms << " against " << startms << " " << endms << " => " << (testms >= startms && testms <= endms) << std::endl;
   return testms >= startms && testms <= endms;
 }
 
@@ -297,6 +298,7 @@ bool ReverseDailySchedule::isInRange( const UtcTimeStamp& time ) const
     if( testms >= toWeeklyMilliseconds( (*it), m_start ) &&
       testms <= toWeeklyMilliseconds( (*it)+1, m_end ) )
       return true;
+    //std::cout << "Day " << *it << "not ok for ReverseWeeklySchedule" << std::endl;
     it++;
   } while ( it != m_Days.end() );
   return false;

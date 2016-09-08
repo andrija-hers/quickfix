@@ -56,12 +56,9 @@ public:
   virtual ~Session();
 
   void doInitialTimestampCheck();
-  void logon() 
-  { m_state.enabled( true ); m_state.logoutReason( "" ); }
-  void logout( const std::string& reason = "" ) 
-  { m_state.enabled( false ); m_state.logoutReason( reason ); }
-  bool isEnabled() const
-  { return m_state.enabled(); }
+  void logon();
+  void logout( const std::string& reason = "" );
+  void eod();
 
   bool sentLogon() const { return m_state.sentLogon(); }
   bool sentLogout() const { return m_state.sentLogout(); }
@@ -110,10 +107,11 @@ public:
   static size_t numSessions();
 
   bool isConnectTime(const UtcTimeStamp& time);
+  void registerConnectionAttempt ();
   bool isSessionTime(const UtcTimeStamp& time) const
     { return m_pSchedule->isInRange(time); }
   bool isLogonTime(const UtcTimeStamp& time) const
-    { return isEnabled() || m_pSchedule->isInRange(time); }
+    { return m_state.manualLoginRequested() || m_pSchedule->isInRange(time); }
   bool isInitiator()
     { return m_state.initiate(); }
   bool isAcceptor()
@@ -209,7 +207,7 @@ public:
   void next( const Message&, const UtcTimeStamp& timeStamp,  bool queued = false );
   void disconnect();
   void autoDisconnect();
-  bool shouldConnectPrerequisites( const UtcTimeStamp& timeStamp ) const;
+  bool shouldConnectPrerequisites( const UtcTimeStamp& timeStamp );
 
   int getExpectedSenderNum() { return m_state.getNextSenderMsgSeqNum(); }
   int getExpectedTargetNum() { return m_state.getNextTargetMsgSeqNum(); }
@@ -300,6 +298,8 @@ private:
   bool set( int s, const Message& m );
   bool get( int s, Message& m ) const;
   bool checkForSessionTime( const UtcTimeStamp& timeStamp, bool disconnecttoo );
+  void doTheResetLogic ();
+  void doTheStandardStateReset ();
 
   Application& m_application;
   SessionID m_sessionID;

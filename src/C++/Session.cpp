@@ -65,7 +65,6 @@ Session::Session( Application& application,
   m_pLogFactory( pLogFactory ),
   m_pResponder( 0 )
 {
-  m_state.enabled( m_pSchedule->isInRange( UtcTimeStamp() ) );
   m_state.heartBtInt( heartBtInt );
   m_state.initiate( heartBtInt != 0 );
   m_state.store( m_messageStoreFactory.create( m_sessionID ) );
@@ -85,8 +84,54 @@ Session::~Session()
     m_pLogFactory->destroy( m_state.log() );
 }
 
-void Session::doInitialTimestampCheck() {
+void Session::doInitialTimestampCheck()
+{
   checkForSessionTime(UtcTimeStamp(), true);
+}
+
+void Session::logon()
+{
+  if( isLoggedOn() )
+  {
+    std::cout << "cannot logon, I'm still logged on" << std::endl;
+    return;
+  }
+  if( m_state.manualLogoutRequested() )
+  {
+    std::cout << "cannot logon, manualLogoutRequested" << std::endl;
+    return;
+  }
+  if( ! ( m_state.sentLogon() || m_state.receivedLogon() ) )
+    m_state.manualLoginRequested( true );
+  m_state.logoutReason( "" ); 
+  UtcTimeStamp sure;
+  sure += -100000;
+  m_state.lastConnectionAttemptTime( sure );
+}
+
+void Session::logout( const std::string& reason )
+{
+  if( ! ( m_state.sentLogon() || m_state.receivedLogon() ) )
+    return;
+  std::cout << "logout requested, manualLogoutRequested it will be" << std::endl;
+  m_state.manualLogoutRequested( true );
+  m_state.logoutReason( reason );
+}
+
+void Session::eod()
+{
+  std::cout << "eod on " << getSessionID() << std::endl;
+  if ( !isLoggedOn() )
+  {
+    m_state.onEvent("Reset due to Eod");
+    m_state.reset();
+    return;
+  }
+  if (m_resetOnLogout)
+    return;
+  std::cout << "m_resetOnLogout set, going to logout" << std::endl;
+  m_resetOnLogout = true;
+  logout();
 }
 
 void Session::insertSendingTime( Header& header )
@@ -132,26 +177,12 @@ void Session::next( const UtcTimeStamp& timeStamp )
 {
   try
   {
-    if ( !checkForSessionTime(timeStamp, true) ) {
+    if ( !checkForSessionTime(timeStamp, true) )
       return;
-    }
-
-    if( !isEnabled() || !isLogonTime(timeStamp) )
-    {
-      if( isLoggedOn() )
-      {
-        if( !m_state.sentLogout() )
-        {
-          m_state.onEvent( "Initiated logout request" );
-          generateLogout( m_state.logoutReason() );
-        }
-      }
-      else
-        return;
-    }
 
     if ( !m_state.receivedLogon() )
     {
+      std::cout << getSessionID() << " received no Logon, shouldSendLogon " << m_state.shouldSendLogon() << ", isLogonTime " << isLogonTime(timeStamp) << std::endl;
       if ( m_state.shouldSendLogon() && isLogonTime(timeStamp) )
       {
         generateLogon();
@@ -208,15 +239,9 @@ void Session::nextLogon( const Message& logon, const UtcTimeStamp& timeStamp )
   logon.getHeader().getField( senderCompID );
   logon.getHeader().getField( targetCompID );
 
+  m_state.manualLoginRequested( false );
   if( m_refreshOnLogon )
     refresh();
-
-  if( !isEnabled() )
-  {
-    m_state.onEvent( "Session is not enabled for logon" );
-    disconnect();
-    return;
-  }
 
   if( !isLogonTime(timeStamp) )
   {
@@ -311,7 +336,12 @@ void Session::nextLogout( const Message& logout, const UtcTimeStamp& timeStamp )
     m_state.onEvent( "Received logout response" );
 
   m_state.incrNextTargetMsgSeqNum();
-  if ( m_resetOnLogout ) m_state.reset();
+  if ( m_resetOnLogout )
+  {
+    m_state.onEvent("hard reset due to manual eod request");
+    m_resetOnLogout = false;
+    m_state.reset();
+  }
   autoDisconnect();
 }
 
@@ -603,6 +633,15 @@ void Session::disconnect()
 {
   Locker l(m_mutex);
 
+  doTheStandardStateReset();
+  if ( m_resetOnDisconnect ) {
+    m_state.onEvent("Reset on disconnect");
+    m_state.reset();
+  }
+
+  UtcTimeStamp safety;
+  safety += 1;
+  m_state.lastConnectionAttemptTime(safety);
   if ( m_pResponder )
   {
     m_state.onEvent( "Disconnecting" );
@@ -610,63 +649,33 @@ void Session::disconnect()
     m_pResponder->disconnect();
     m_pResponder = 0;
   }
-
-  if ( m_state.receivedLogon() || m_state.sentLogon() )
-  {
-    m_state.receivedLogon( false );
-    m_state.sentLogon( false );
-    m_application.onLogout( m_sessionID );
-  }
-
-  m_state.sentLogout( false );
-  m_state.receivedReset( false );
-  m_state.sentReset( false );
-  m_state.clearQueue();
-  m_state.logoutReason();
-  if ( m_resetOnDisconnect ) {
-    m_state.onEvent("Reset on disconnect");
-    m_state.reset();
-  }
-
-  m_state.resendRange( 0, 0 );
 }
 
 void Session::autoDisconnect () {
   if ( isSessionTime( UtcTimeStamp() ) )
   {
-    if ( m_pSchedule->shouldAutoReconnect() )
-      logon();
+    if ( !m_pSchedule->shouldAutoReconnect() )
+      disconnect();
+    else
+      doTheStandardStateReset();
     return;
   }
   if ( m_pSchedule->shouldAutoDisconnect() )
     disconnect();
   else
-  {
-    if ( m_state.receivedLogon() || m_state.sentLogon() )
-    {
-      m_state.receivedLogon( false );
-      m_state.sentLogon( false );
-      m_application.onLogout( m_sessionID );
-    }
-
-    m_state.sentLogout( false );
-    m_state.receivedReset( false );
-    m_state.sentReset( false );
-    m_state.clearQueue();
-    m_state.logoutReason();
-    m_state.resendRange( 0, 0 );
-  }
+    doTheStandardStateReset();
 }
 
-bool Session::shouldConnectPrerequisites( const UtcTimeStamp& time ) const 
+bool Session::shouldConnectPrerequisites( const UtcTimeStamp& time )
 {
   if ( isSessionTime ( time ) ) 
   {
     if ( isLoggedOn () ) 
       return m_pSchedule->shouldAutoReconnect();
-    return m_pSchedule->shouldAutoConnect() || isEnabled();
+    return m_pSchedule->shouldAutoConnect() || m_state.manualLoginRequested();
   }
-  return isEnabled();
+  doTheResetLogic();
+  return m_state.manualLoginRequested();
 }
 
 bool Session::resend( Message& message )
@@ -1167,40 +1176,61 @@ bool Session::verify( const Message& msg, int direction, bool checkTooHigh,
 
 bool Session::checkSessionTime( const UtcTimeStamp& timeStamp )
 {
-  return isEnabled() || m_pSchedule->isInRange( timeStamp );
-  /*
-  UtcTimeStamp creationTime = m_state.getCreationTime();
-  bool ret = m_sessionTime.isInSameRange( timeStamp, creationTime );
-  if (!ret)
-  {
-    m_state.onEvent(std::string("timeStamp ") + UtcTimeStampConvertor::convert(timeStamp) + " nok "+m_sessionTime.dump() + " with creationTime " + UtcTimeStampConvertor::convert(creationTime));
-  }
-  return ret;
-  */
+  return !m_state.manualLogoutRequested() && isLogonTime( timeStamp );
 }
 
 bool Session::checkForSessionTime( const UtcTimeStamp& timeStamp, bool disconnecttoo )
 {
   if( !checkSessionTime(timeStamp) ) 
   {
-    if( m_pSchedule->shouldAutoEOD() )
+    if( isLoggedOn() )
     {
-      m_state.onEvent("hard reset");
-      m_state.reset();
+      if( !m_state.sentLogout() )
+      {
+        m_state.onEvent( "Initiated logout request" );
+        generateLogout( m_state.logoutReason() );
+      }
     }
     else
     {
-      m_state.onEvent("softReset");
-      m_state.store()->softReset();
+      doTheResetLogic();
+      autoDisconnect();
     }
-    if( isLoggedOn() )
-    {
-      generateLogout();
-    }
-    autoDisconnect();
     return false;
   }
   return true;
+}
+
+void Session::doTheResetLogic ()
+{
+  if( m_pSchedule->shouldAutoEOD() )
+  {
+    m_state.onEvent("hard reset");
+    m_state.reset();
+  }
+  else
+  {
+    m_state.onEvent("softReset");
+    m_state.store()->softReset();
+  }
+}
+
+void Session::doTheStandardStateReset ()
+{
+  m_state.manualLoginRequested( false );
+  m_state.manualLogoutRequested( false );
+  m_state.sentLogout( false );
+  m_state.receivedReset( false );
+  m_state.sentReset( false );
+  m_state.clearQueue();
+  m_state.logoutReason();
+  m_state.resendRange( 0, 0 );
+  if ( m_state.receivedLogon() || m_state.sentLogon() )
+  {
+    m_state.receivedLogon( false );
+    m_state.sentLogon( false );
+    m_application.onLogout( m_sessionID );
+  }
 }
 
 bool Session::shouldSendReset()
@@ -1464,9 +1494,6 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
 
   try
   {
-    if ( !(checkForSessionTime(timeStamp, true) || isEnabled()) )
-      return;
-
     const MsgType& msgType = FIELD_GET_REF( header, MsgType );
     const BeginString& beginString = FIELD_GET_REF( header, BeginString );
     // make sure these fields are present
@@ -1721,11 +1748,15 @@ bool Session::isConnectTime( const UtcTimeStamp& time )
 {
   if ( !shouldConnectPrerequisites( time ) )
     return false;
-  //std::cout << "shouldConnectPrerequisites ok for " << getSessionID() << ", reconnectInterval " << m_pSchedule->reconnectInterval() << ", time diff " << (time - m_state.lastConnectionAttemptTime()) << std::endl;
-  bool ret = m_pSchedule->reconnectInterval() <= (time - m_state.lastConnectionAttemptTime());
-  if (ret) 
-    m_state.lastConnectionAttemptTime( time );
-  return ret;
+  if( time == m_state.lastConnectionAttemptTime() ) 
+    return true;
+  std::cout << "shouldConnectPrerequisites ok for " << getSessionID() << ", reconnectInterval " << m_pSchedule->reconnectInterval() << ", time diff " << (time - m_state.lastConnectionAttemptTime()) << std::endl;
+  return m_pSchedule->reconnectInterval() <= (time - m_state.lastConnectionAttemptTime());
+}
+
+void Session::registerConnectionAttempt ()
+{
+  m_state.lastConnectionAttemptTime( UtcTimeStamp() );
 }
 
 bool Session::addSession( Session& s )

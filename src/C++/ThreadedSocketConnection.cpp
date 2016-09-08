@@ -79,6 +79,8 @@ bool ThreadedSocketConnection::send( const std::string& msg )
 
 bool ThreadedSocketConnection::connect()
 {
+  if( m_pSession )
+    m_pSession->registerConnectionAttempt();
   return socket_connect(getSocket(), m_address.c_str(), m_port) >= 0;
 }
 

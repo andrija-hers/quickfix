@@ -221,7 +221,7 @@ void HttpConnection::processRoot
         A a(b); a.href(href).text(i->toString());
       }
       { TD td(b); td.text(pSession->isInitiator() ? "initiator" : "acceptor"); }
-      { TD td(b); td.text(pSession->isEnabled() ? "yes" : "no"); }
+      { TD td(b); td.text(pSession->isSessionTime(UtcTimeStamp()) ? "yes" : "no"); }
       { TD td(b); td.text(pSession->isSessionTime(UtcTimeStamp()) ? "yes" : "no"); }
       { TD td(b); td.text(pSession->isLoggedOn() ? "yes" : "no"); }
       { TD td(b); td.text(pSession->getExpectedTargetNum()); }
@@ -515,7 +515,7 @@ void HttpConnection::processSession
       { b << NBSP; A a(b); a.href("/refreshSession" + copy.getParameterString()).text("REFRESH"); }
     }
 
-    showRow( b, "Enabled", pSession->isEnabled(), url );
+    showRow( b, "Active", pSession->isSessionTime(UtcTimeStamp()), url );
     showRow( b, "ConnectionType", std::string(pSession->isInitiator() ?"initiator" : "acceptor") );
     showRow( b, "SessionTime", pSession->isSessionTime(UtcTimeStamp()) );
     showRow( b, "Logged On", pSession->isLoggedOn() );

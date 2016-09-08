@@ -1218,7 +1218,6 @@ TEST_FIXTURE(startManuallyFixture, notStartAtStartTime)
 
   //process_sleep( 1 );
 
-  CHECK_EQUAL( 0, object->isEnabled() );
   CHECK_EQUAL( 0, object->isLogonTime( UtcTimeStamp() ) );
   object->logon();
   CHECK_EQUAL( 1, object->isLogonTime( UtcTimeStamp() ) );

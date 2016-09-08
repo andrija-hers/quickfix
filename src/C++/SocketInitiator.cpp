@@ -135,7 +135,7 @@ void SocketInitiator::doConnect( const SessionID& s, const Dictionary& d )
     std::string address;
     short port = 0;
     Session* session = Session::lookupSession( s );
-    if( !session->shouldConnectPrerequisites(UtcTimeStamp()) ) return;
+    if( !session->isConnectTime(UtcTimeStamp()) ) return;
 
     Log* log = session->getLog();
 
@@ -143,6 +143,7 @@ void SocketInitiator::doConnect( const SessionID& s, const Dictionary& d )
 
     log->onEvent( "Connecting to " + address + " on port " + IntConvertor::convert((unsigned short)port) );
     int result = m_connector.connect( address, port, m_noDelay, m_sendBufSize, m_rcvBufSize );
+    session->registerConnectionAttempt();
     setPending( s );
 
     m_pendingConnections[ result ] 

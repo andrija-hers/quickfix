@@ -195,16 +195,16 @@ void Acceptor::stop( bool force )
 
   HttpServer::stopGlobal();
 
-  std::vector<Session*> enabledSessions;
+  std::vector<Session*> tempSessions;
 
   Sessions sessions = m_sessions;
   Sessions::iterator i = sessions.begin();
   for ( ; i != sessions.end(); ++i )
   {
     Session* pSession = Session::lookupSession(i->first);
-    if( pSession && pSession->isEnabled() )
+    if( pSession )
     {
-      enabledSessions.push_back( pSession );
+      tempSessions.push_back( pSession );
       pSession->logout();
       Session::unregisterSession( pSession->getSessionID() );
     }
@@ -222,9 +222,11 @@ void Acceptor::stop( bool force )
     thread_join( m_threadid );
   m_threadid = 0;
 
-  std::vector<Session*>::iterator session = enabledSessions.begin();
-  for( ; session != enabledSessions.end(); ++session )
+  /* why logon again?
+  std::vector<Session*>::iterator session = tempSessions.begin();
+  for( ; session != tempSessions.end(); ++session )
     (*session)->logon();
+    */
 }
 
 bool Acceptor::isLoggedOn()

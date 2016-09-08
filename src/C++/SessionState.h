@@ -40,7 +40,7 @@ class SessionState : public MessageStore, public Log
 
 public:
   SessionState()
-: m_enabled( true ), m_receivedLogon( false ),
+: m_manualLoginRequested( false ), m_manualLogoutRequested( false ), m_receivedLogon( false ),
   m_sentLogout( false ), m_sentLogon( false ),
   m_sentReset( false ), m_receivedReset( false ),
   m_initiate( false ), m_logonTimeout( 10 ), 
@@ -50,8 +50,11 @@ public:
     m_lastConnectionAttempt += -10000000;
   }
 
-  bool enabled() const { return m_enabled; }
-  void enabled( bool value ) { m_enabled = value; }
+  bool manualLoginRequested() const { return m_manualLoginRequested; }
+  void manualLoginRequested( bool value ) { m_manualLoginRequested = value; }
+
+  bool manualLogoutRequested() const { return m_manualLogoutRequested; }
+  void manualLogoutRequested( bool value ) { m_manualLogoutRequested = value; }
 
   bool receivedLogon() const { return m_receivedLogon; }
   void receivedLogon( bool value ) { m_receivedLogon = value; }
@@ -219,7 +222,8 @@ public:
   { if ( !m_pLog ) return ; Locker l( m_mutex ); m_pLog->onEvent( string ); }
 
 private:
-  bool m_enabled;
+  bool m_manualLoginRequested;
+  bool m_manualLogoutRequested;
   bool m_receivedLogon;
   bool m_sentLogout;
   bool m_sentLogon;
