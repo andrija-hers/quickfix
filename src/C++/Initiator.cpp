@@ -239,7 +239,11 @@ void Initiator::stop( bool force )
     if( pSession )
     {
       tempSessions.push_back( pSession );
-      pSession->logout();
+      std::cout << "Initiator stopping with force " << force << std::endl;
+      if( force ) 
+        pSession->mustLogout();
+      else 
+        pSession->logout();
     }
   }
 

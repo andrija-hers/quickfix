@@ -118,6 +118,12 @@ void Session::logout( const std::string& reason )
   m_state.logoutReason( reason );
 }
 
+void Session::mustLogout( const std::string& reason ) 
+{
+  m_pSchedule.reset(createSchedule());
+  logout( reason );
+}
+
 void Session::eod()
 {
   std::cout << "eod on " << getSessionID() << std::endl;
@@ -239,7 +245,6 @@ void Session::nextLogon( const Message& logon, const UtcTimeStamp& timeStamp )
   logon.getHeader().getField( senderCompID );
   logon.getHeader().getField( targetCompID );
 
-  m_state.manualLoginRequested( false );
   if( m_refreshOnLogon )
     refresh();
 
@@ -710,6 +715,13 @@ throw ( IOException )
 
 void Session::generateLogon()
 {
+  if( !isConnectTime( UtcTimeStamp() ) )
+  {
+    m_state.onEvent("Cannot send logon, !isConnectTime");
+    return;
+  }
+  m_state.manualLoginRequested( false );
+  registerConnectionAttempt();
   Message logon;
   logon.getHeader().setField( MsgType( "A" ) );
   logon.setField( EncryptMethod( 0 ) );
@@ -1217,6 +1229,7 @@ void Session::doTheResetLogic ()
 
 void Session::doTheStandardStateReset ()
 {
+  registerConnectionAttempt();
   m_state.manualLoginRequested( false );
   m_state.manualLogoutRequested( false );
   m_state.sentLogout( false );
@@ -1748,8 +1761,6 @@ bool Session::isConnectTime( const UtcTimeStamp& time )
 {
   if ( !shouldConnectPrerequisites( time ) )
     return false;
-  if( time == m_state.lastConnectionAttemptTime() ) 
-    return true;
   std::cout << "shouldConnectPrerequisites ok for " << getSessionID() << ", reconnectInterval " << m_pSchedule->reconnectInterval() << ", time diff " << (time - m_state.lastConnectionAttemptTime()) << std::endl;
   return m_pSchedule->reconnectInterval() <= (time - m_state.lastConnectionAttemptTime());
 }

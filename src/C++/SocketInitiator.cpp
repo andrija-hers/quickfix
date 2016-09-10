@@ -143,7 +143,6 @@ void SocketInitiator::doConnect( const SessionID& s, const Dictionary& d )
 
     log->onEvent( "Connecting to " + address + " on port " + IntConvertor::convert((unsigned short)port) );
     int result = m_connector.connect( address, port, m_noDelay, m_sendBufSize, m_rcvBufSize );
-    session->registerConnectionAttempt();
     setPending( s );
 
     m_pendingConnections[ result ] 

@@ -58,6 +58,7 @@ public:
   void doInitialTimestampCheck();
   void logon();
   void logout( const std::string& reason = "" );
+  void mustLogout( const std::string& reason = "" );
   void eod();
 
   bool sentLogon() const { return m_state.sentLogon(); }
