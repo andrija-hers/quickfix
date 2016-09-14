@@ -649,6 +649,8 @@
     <ClInclude Include="PUGIXML_DOMDocument.h" />
     <ClInclude Include="Queue.h" />
     <ClInclude Include="Responder.h" />
+    <ClInclude Include="Schedule.h" />
+    <ClInclude Include="ScheduleFactory.h" />
     <ClInclude Include="Session.h" />
     <ClInclude Include="SessionFactory.h" />
     <ClInclude Include="SessionID.h" />
@@ -668,6 +670,7 @@
     <ClInclude Include="ThreadedSocketInitiator.h" />
     <ClInclude Include="TimeRange.h" />
     <ClInclude Include="Utility.h" />
+    <ClInclude Include="ValidationRules.h" />
     <ClInclude Include="Values.h" />
   </ItemGroup>
   <ItemGroup>
@@ -699,6 +702,7 @@
     <ClCompile Include="PostgreSQLStore.cpp" />
     <ClCompile Include="pugixml.cpp" />
     <ClCompile Include="PUGIXML_DOMDocument.cpp" />
+    <ClCompile Include="Schedule.cpp" />
     <ClCompile Include="Session.cpp" />
     <ClCompile Include="SessionFactory.cpp" />
     <ClCompile Include="SessionSettings.cpp" />
@@ -715,6 +719,7 @@
     <ClCompile Include="ThreadedSocketInitiator.cpp" />
     <ClCompile Include="TimeRange.cpp" />
     <ClCompile Include="Utility.cpp" />
+    <ClCompile Include="ValidationRules.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectName>quickfix</ProjectName>
@@ -732,7 +737,7 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">

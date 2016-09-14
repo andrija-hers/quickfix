@@ -1971,6 +1971,15 @@
     <ClInclude Include="PUGIXML_DOMDocument.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="Schedule.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ScheduleFactory.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ValidationRules.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Field">
@@ -2172,6 +2181,12 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="PUGIXML_DOMDocument.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Schedule.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="ValidationRules.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>

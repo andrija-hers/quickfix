@@ -103,8 +103,8 @@ class WeeklySchedule : public Schedule
       bool autodisconnect
     );
   protected:
-    int min () const { return m_MinWeeklyMilliseconds; }
-    int max () const { return m_MaxWeeklyMilliseconds; }
+    int my_min () const { return m_MinWeeklyMilliseconds; }
+    int my_max () const { return m_MaxWeeklyMilliseconds; }
     bool isAllPass () const { return m_MinWeeklyMilliseconds == m_MaxWeeklyMilliseconds; }
   private:
     int m_MinWeeklyMilliseconds;

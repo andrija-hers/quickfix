@@ -79,7 +79,7 @@ class ValidationRules
     static const std::string AnyMsgType;
     typedef std::set<int> MsgTypeValues;
     typedef std::map< std::string, MsgTypeValues > MsgTypeMap;
-    class DirectionAwareMsgTypeMap {
+    struct DirectionAwareMsgTypeMap {
       private: 
         MsgTypeMap m_inboundFields;
         MsgTypeMap m_outboundFields;
@@ -157,6 +157,7 @@ class ValidationRules
       }
       catch ( std::out_of_range& e )
       {
+		    (void) e;
         map[msgtype] = MsgTypeValues();
         return findMsgTypeValues( map, msgtype );
       }
@@ -172,6 +173,7 @@ class ValidationRules
       }
       catch ( std::out_of_range& e ) 
       {
+        (void) e;
         return false;
       }
       MsgTypeValues::const_iterator si = mi->second.find( value );

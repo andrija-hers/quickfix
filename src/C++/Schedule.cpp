@@ -339,7 +339,7 @@ bool NormalWeeklySchedule::isInRange( const UtcTimeStamp& time ) const
   if ( isAllPass() )
     return true;
   int wm = toWeeklyMilliseconds( time );
-  return wm >= min() && wm <= max();
+  return wm >= my_min() && wm <= my_max();
 }
 
 ReverseWeeklySchedule::ReverseWeeklySchedule(
@@ -361,7 +361,7 @@ bool ReverseWeeklySchedule::isInRange( const UtcTimeStamp& time ) const
   if ( isAllPass() )
     return true;
   int wm = toWeeklyMilliseconds( time );
-  return wm <= min() || wm >= max();
+  return wm <= my_min() || wm >= my_max();
 }
 
 ISchedule* createSchedule( )

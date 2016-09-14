@@ -1447,17 +1447,17 @@ void Session::next( const std::string& msg, const UtcTimeStamp& timeStamp, bool 
   }
   */
   catch ( TagOutOfOrder & e )
-  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER, e.field ) ); }
   catch ( IncorrectDataFormat & e )
-  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE, e.field ) ); }
   catch ( IncorrectTagValue & e )
-  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_VALUE_IS_INCORRECT, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_VALUE_IS_INCORRECT, e.field ) ); }
   catch ( RepeatedTag & e )
-  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE, e.field ) ); }
   catch ( RepeatingGroupCountMismatch & e )
-  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP, e.field ) ); }
   catch ( InvalidMessage& e )
-  { LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INVALID_MESSAGE, 0 ) ); }
+  { (void) e; LOGEX( generateReject( direction, Header(), msg, SessionRejectReason_INVALID_MESSAGE, 0 ) ); }
   //{ m_state.onEvent( e.what() ); }
   catch ( RejectLogon& e )
   {
@@ -1601,17 +1601,17 @@ void Session::next( const Message& message, const UtcTimeStamp& timeStamp, bool 
       { LOGEX( generateReject( direction, message, "Unsupported message type" ) ); }
   }
   catch ( TagOutOfOrder & e )
-  { LOGEX( generateReject( direction, message, SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, message, SessionRejectReason_TAG_SPECIFIED_OUT_OF_REQUIRED_ORDER, e.field ) ); }
   catch ( IncorrectDataFormat & e )
-  { LOGEX( generateReject( direction, message, SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, message, SessionRejectReason_INCORRECT_DATA_FORMAT_FOR_VALUE, e.field ) ); }
   catch ( IncorrectTagValue & e )
-  { LOGEX( generateReject( direction, message, SessionRejectReason_VALUE_IS_INCORRECT, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, message, SessionRejectReason_VALUE_IS_INCORRECT, e.field ) ); }
   catch ( RepeatedTag & e )
-  { LOGEX( generateReject( direction, message, SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, message, SessionRejectReason_TAG_APPEARS_MORE_THAN_ONCE, e.field ) ); }
   catch ( RepeatingGroupCountMismatch & e )
-  { LOGEX( generateReject( direction, message, SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP, e.field ) ); }
+  { (void) e; LOGEX( generateReject( direction, message, SessionRejectReason_INCORRECT_NUMINGROUP_COUNT_FOR_REPEATING_GROUP, e.field ) ); }
   catch ( InvalidMessage& e )
-  { LOGEX( generateReject( direction, message, SessionRejectReason_INVALID_MESSAGE, 0 ) ); }
+  { (void) e; LOGEX( generateReject( direction, message, SessionRejectReason_INVALID_MESSAGE, 0 ) ); }
   //{ m_state.onEvent( e.what() ); }
   catch ( RejectLogon& e )
   {
