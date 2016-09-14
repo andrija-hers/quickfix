@@ -182,6 +182,9 @@ class Application : public FIX::Application
   throw( FIX::DoNotSend )
   {}
 
+  void onReset( const FIX::SessionID& )
+  {}
+
   void fromAdmin( const FIX::Message& message, const FIX::SessionID& sessionID )
   throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::RejectLogon ) 
   {
