@@ -391,7 +391,7 @@ void ValidationRules::ValidationRule::onRuleElement( const std::string& string )
       inbound = IntConvertor::convert( string );
     }
     catch( FieldConvertError& e ) 
-    { }
+    { (void) e; }
   }
   else if( rejectType < 0 )
   {
@@ -402,7 +402,7 @@ void ValidationRules::ValidationRule::onRuleElement( const std::string& string )
       rejectType = IntConvertor::convert( string );
     }
     catch( FieldConvertError& e )
-    { }
+    { (void) e; }
   }
   else if( messageType.size() < 1 )
   {
@@ -419,7 +419,7 @@ void ValidationRules::ValidationRule::onRuleElement( const std::string& string )
       tag = IntConvertor::convert( string );
     }
     catch( FieldConvertError& e )
-    { }
+    { (void) e; }
   }
 }
 

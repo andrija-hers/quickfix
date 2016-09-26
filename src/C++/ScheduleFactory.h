@@ -88,6 +88,13 @@ class InvalidNumberOfElementsInScheduleDescriptor : public std::out_of_range
     std::out_of_range( what ) {}
 };
 
+class ImpossibleReverseWeeklySchedule : public std::out_of_range
+{
+  public:
+    ImpossibleReverseWeeklySchedule ( const std::string& what ):
+    std::out_of_range( what ) {}
+};
+
 ISchedule* createSchedule( );
 
 ISchedule* createSchedule( const std::string& descriptor );

@@ -129,8 +129,7 @@ void Session::eod()
   std::cout << "eod on " << getSessionID() << std::endl;
   if ( !isLoggedOn() )
   {
-    m_state.onEvent("Reset due to Eod");
-    m_state.reset();
+    doStateReset( "Reset due to Eod" );
     return;
   }
   if (m_resetOnLogout)
@@ -262,8 +261,7 @@ void Session::nextLogon( const Message& logon, const UtcTimeStamp& timeStamp )
 
   if( m_state.receivedReset() )
   {
-    m_state.onEvent( "Logon contains ResetSeqNumFlag=Y, reseting sequence numbers to 1" );
-    if( !m_state.sentReset() ) m_state.reset();
+    if( !m_state.sentReset() ) doStateReset( "Logon contains ResetSeqNumFlag=Y, reseting sequence numbers to 1" );
   }
 
   if( m_state.shouldSendLogon() && !m_state.receivedReset() )
@@ -275,8 +273,7 @@ void Session::nextLogon( const Message& logon, const UtcTimeStamp& timeStamp )
 
   if( !m_state.initiate() && m_resetOnLogon )
   {
-    m_state.onEvent( "Should reset on logon");
-    m_state.reset();
+    doStateReset( "Should reset on logon");
   }
 
   if( !verify( logon, INCOMING_DIRECTION, false, true ) )
@@ -343,9 +340,8 @@ void Session::nextLogout( const Message& logout, const UtcTimeStamp& timeStamp )
   m_state.incrNextTargetMsgSeqNum();
   if ( m_resetOnLogout )
   {
-    m_state.onEvent("hard reset due to manual eod request");
     m_resetOnLogout = false;
-    m_state.reset();
+    doStateReset( "Hard reset due to manual eod request" );
   }
   autoDisconnect();
 }
@@ -576,8 +572,7 @@ bool Session::sendRaw( Message& message, int num )
 
         if( resetSeqNumFlag )
         {
-          m_state.onEvent("Resetting due to resetSeqNumFlag");
-          m_state.reset();
+          doStateReset("Resetting due to resetSeqNumFlag");
           message.getHeader().setField( MsgSeqNum(getExpectedSenderNum()) );
         }
         m_state.sentReset( resetSeqNumFlag );
@@ -640,8 +635,7 @@ void Session::disconnect()
 
   doTheStandardStateReset();
   if ( m_resetOnDisconnect ) {
-    m_state.onEvent("Reset on disconnect");
-    m_state.reset();
+    doStateReset("Reset on disconnect");
   }
 
   UtcTimeStamp safety;
@@ -731,8 +725,7 @@ void Session::generateLogon()
   if( m_refreshOnLogon )
     refresh();
   if( m_resetOnLogon ) {
-    m_state.onEvent("Reset on logon");
-    m_state.reset();
+    doStateReset( "Reset on logon" );
   }
   if( shouldSendReset() )
     logon.setField( ResetSeqNumFlag(true) );
@@ -1182,7 +1175,8 @@ bool Session::verify( const Message& msg, int direction, bool checkTooHigh,
   m_state.lastReceivedTime( now );
   m_state.testRequest( 0 );
 
-  fromCallback( pMsgType ? *pMsgType : MsgType(), msg, m_sessionID );
+  if( direction == INCOMING_DIRECTION )
+    fromCallback( pMsgType ? *pMsgType : MsgType(), msg, m_sessionID );
   return true;
 }
 
@@ -1217,12 +1211,11 @@ void Session::doTheResetLogic ()
 {
   if( m_pSchedule->shouldAutoEOD() )
   {
-    m_state.onEvent("hard reset");
-    m_state.reset();
+    doStateReset( "Hard reset" );
   }
   else
   {
-    m_state.onEvent("softReset");
+    m_state.onEvent( "softReset" );
     m_state.store()->softReset();
   }
 }
@@ -1244,6 +1237,21 @@ void Session::doTheStandardStateReset ()
     m_state.sentLogon( false );
     m_application.onLogout( m_sessionID );
   }
+}
+
+void Session::doStateReset( const std::string& reason )
+{
+  if( m_state.getNextSenderMsgSeqNum() == 1 && m_state.getNextTargetMsgSeqNum() == 1 )
+  {
+    m_state.softReset();
+    return;
+  }
+  if( !reason.length() )
+    m_state.onEvent( "Reset" );
+  else
+    m_state.onEvent( reason );
+  m_state.reset();
+  m_application.onReset( m_sessionID );
 }
 
 bool Session::shouldSendReset()
@@ -1761,7 +1769,7 @@ bool Session::isConnectTime( const UtcTimeStamp& time )
 {
   if ( !shouldConnectPrerequisites( time ) )
     return false;
-  std::cout << "shouldConnectPrerequisites ok for " << getSessionID() << ", reconnectInterval " << m_pSchedule->reconnectInterval() << ", time diff " << (time - m_state.lastConnectionAttemptTime()) << std::endl;
+  //std::cout << "shouldConnectPrerequisites ok for " << getSessionID() << ", reconnectInterval " << m_pSchedule->reconnectInterval() << ", time diff " << (time - m_state.lastConnectionAttemptTime()) << std::endl;
   return m_pSchedule->reconnectInterval() <= (time - m_state.lastConnectionAttemptTime());
 }
 

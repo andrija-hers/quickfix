@@ -55,6 +55,8 @@ public:
   /// Notification of app message being sent to target
   virtual void toApp( Message&, const SessionID& )
   throw( DoNotSend ) = 0;
+  /// Notification of reset
+  virtual void onReset( const SessionID& ) = 0;
   /// Notification of admin message being received from target
   virtual void fromAdmin( const Message&, const SessionID& )
   throw( FieldNotFound, IncorrectDataFormat, IncorrectTagValue, RejectLogon ) = 0;
@@ -89,6 +91,8 @@ public:
   void toApp( Message& message, const SessionID& sessionID )
   throw( DoNotSend )
   { Locker l( m_mutex ); app().toApp( message, sessionID ); }
+  void onReset( const SessionID& sessionID )
+  { Locker l( m_mutex ); app().onReset( sessionID ); }
   void fromAdmin( const Message& message, const SessionID& sessionID )
   throw( FieldNotFound, IncorrectDataFormat, IncorrectTagValue, RejectLogon )
   { Locker l( m_mutex ); app().fromAdmin( message, sessionID ); }
@@ -116,6 +120,7 @@ class NullApplication : public Application
   void toAdmin( Message&, const SessionID& ) {}
   void toApp( Message&, const SessionID& )
   throw( DoNotSend ) {}
+  void onReset( const SessionID& ) {}
   void fromAdmin( const Message&, const SessionID& )
   throw( FieldNotFound, IncorrectDataFormat, IncorrectTagValue, RejectLogon ) {}
   void fromApp( const Message&, const SessionID& )

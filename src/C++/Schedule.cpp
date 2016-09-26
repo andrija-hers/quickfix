@@ -271,8 +271,10 @@ bool NormalDailySchedule::isInRange( const UtcTimeStamp& time ) const
     startms = toWeeklyMilliseconds( day, m_start ),
     endms = toWeeklyMilliseconds( day, m_end );
 
+  /*
   if ( ! (testms >= startms && testms <= endms) )
-    //std::cout << "NormalDailySchedule isInRange?, test " << testms << " against " << startms << " " << endms << " => " << (testms >= startms && testms <= endms) << std::endl;
+    std::cout << "NormalDailySchedule isInRange?, test " << testms << " against " << startms << " " << endms << " => " << (testms >= startms && testms <= endms) << std::endl;
+  */
   return testms >= startms && testms <= endms;
 }
 
@@ -298,7 +300,13 @@ bool ReverseDailySchedule::isInRange( const UtcTimeStamp& time ) const
     if( testms >= toWeeklyMilliseconds( (*it), m_start ) &&
       testms <= toWeeklyMilliseconds( (*it)+1, m_end ) )
       return true;
-    //std::cout << "Day " << *it << "not ok for ReverseWeeklySchedule" << std::endl;
+    /*
+    std::cout << "Day " << *it << "not ok for ReverseWeeklySchedule"
+      << ", testms" << testms
+      << ", teststart " << toWeeklyMilliseconds( (*it), m_start )
+      << ", testend " << toWeeklyMilliseconds( (*it)+1, m_end )
+      << std::endl;
+      */
     it++;
   } while ( it != m_Days.end() );
   return false;
@@ -361,6 +369,7 @@ bool ReverseWeeklySchedule::isInRange( const UtcTimeStamp& time ) const
   if ( isAllPass() )
     return true;
   int wm = toWeeklyMilliseconds( time );
+  //std::cout << "ReverseWeeklySchedule min " << min() << ", max " << max() << std::endl;
   return wm <= my_min() || wm >= my_max();
 }
 
@@ -384,6 +393,10 @@ ISchedule* createSchedule( const std::string& descriptor )
   {
     int min = r.days.empty() ? 0 : *(r.days.begin()),
       max = r.days.empty() ? 0 : *(r.days.rbegin());
+    //std::cout << "weekly, start " << r.start << ", end" << r.end << std::endl;
+    reverse = reverse && r.days.size() < 2;
+    if( reverse && r.days.size() < 1 )
+      throw ImpossibleReverseWeeklySchedule( "Reverse weekly schedule cannot have 0 days defined" );
     return reverse ?
       static_cast<ISchedule*> (
         new ReverseWeeklySchedule(

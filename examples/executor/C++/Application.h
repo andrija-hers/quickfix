@@ -48,6 +48,7 @@ public:
   void toAdmin( FIX::Message&, const FIX::SessionID& );
   void toApp( FIX::Message&, const FIX::SessionID& )
     throw( FIX::DoNotSend );
+  void onReset( const FIX::SessionID& ) {}
   void fromAdmin( const FIX::Message&, const FIX::SessionID& )
     throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::RejectLogon );
   void fromApp( const FIX::Message& message, const FIX::SessionID& sessionID )

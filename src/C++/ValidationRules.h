@@ -164,7 +164,6 @@ class ValidationRules
     }
 
     static bool mapHasValue ( const MsgTypeMap& map, const std::string& msgtype, int value )
-    throw( std::out_of_range )
     {
       MsgTypeMap::const_iterator mi;
       try 

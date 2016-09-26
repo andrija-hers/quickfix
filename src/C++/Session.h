@@ -299,8 +299,9 @@ private:
   bool set( int s, const Message& m );
   bool get( int s, Message& m ) const;
   bool checkForSessionTime( const UtcTimeStamp& timeStamp, bool disconnecttoo );
-  void doTheResetLogic ();
-  void doTheStandardStateReset ();
+  void doTheResetLogic();
+  void doTheStandardStateReset();
+  void doStateReset( const std::string& reason );
 
   Application& m_application;
   SessionID m_sessionID;

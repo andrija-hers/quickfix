@@ -440,7 +440,11 @@ bool thread_spawn( THREAD_START_ROUTINE func, void* var, thread_id& thread )
 #ifdef _MSC_VER
   thread_id result = 0;
   unsigned int id = 0;
-  result = _beginthreadex( NULL, 0, &func, var, 0, &id );
+#if (_MSC_VER >= 1900)
+  result = _beginthreadex(NULL, 0, func, var, 0, &id);
+#else
+  result = _beginthreadex(NULL, 0, &func, var, 0, &id);
+#endif
   if ( result == 0 ) return false;
 #else
   thread_id result = 0;
